@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ──────────────────────────────────────────────────────────────
+   CSS Custom Properties — Light Mode (default)
+   ────────────────────────────────────────────────────────────── */
+:root {
+  --bg-main: #FFFFFF;
+  --bg-surface: #FFFFFF;
+  --text-primary: #181D1F;
+  --text-secondary: rgba(24, 29, 31, 0.55);
+  --border-color: rgba(24, 29, 31, 0.12);
+  --accent-primary: #2196F3;
+  --danger: #ff4d4f;
+  --shadow-md: 0 4px 16px rgba(24, 29, 31, 0.10);
+  --radius-sleek: 6px;
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Dark Mode overrides — applied via ThemeContext adding .dark-mode
+   to <body>
+   ────────────────────────────────────────────────────────────── */
+body.dark-mode {
+  --bg-main: #141414;
+  --bg-surface: #1f1f1f;
+  --text-primary: rgba(255, 255, 255, 0.88);
+  --text-secondary: rgba(255, 255, 255, 0.45);
+  --border-color: rgba(255, 255, 255, 0.12);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Page transition */
+.fade-in {
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* AG Grid — inherit font from our design system only */
+.ag-theme-quartz {
+  --ag-font-family: 'Inter', sans-serif;
+  --ag-font-size: 14px;
+}

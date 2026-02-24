@@ -204,7 +204,9 @@ const BaseGridPage = <T extends { [key: string]: any }, TInsert = Partial<T>, TU
                         rowData={data}
                         columnDefs={columnDefs.map(col => ({
                             ...col,
-                            editable: permissions.update ? col.editable : false
+                            editable: permissions.update ? col.editable : false,
+                            checkboxSelection: (permissions.delete || permissions.update) ? col.checkboxSelection : false,
+                            headerCheckboxSelection: (permissions.delete || permissions.update) ? col.headerCheckboxSelection : false
                         }))}
                         defaultColDef={defaultColDef}
                         animateRows={true}

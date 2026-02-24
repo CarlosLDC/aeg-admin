@@ -1,4 +1,4 @@
-import { Layout, Avatar, Dropdown, Space, Typography, Grid } from 'antd';
+import { Layout, Avatar, Dropdown, Space, Typography, Grid, Button, Tooltip } from 'antd';
 
 import { UserOutlined, SettingOutlined, LogoutOutlined, BellOutlined, DesktopOutlined, BulbOutlined, MenuUnfoldOutlined, MenuFoldOutlined, MoonOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -46,9 +46,33 @@ const AppHeader = ({ collapsed, onCollapse }: HeaderProps) => {
     };
 
     const getThemeIcon = () => {
-        if (theme === 'system') return <DesktopOutlined title="Tema del Sistema" style={{ fontSize: '18px', cursor: 'pointer' }} onClick={cycleTheme} />;
-        if (theme === 'light') return <BulbOutlined title="Modo Claro" style={{ fontSize: '18px', cursor: 'pointer' }} onClick={cycleTheme} />;
-        return <MoonOutlined title="Modo Oscuro" style={{ fontSize: '18px', cursor: 'pointer' }} onClick={cycleTheme} />;
+        const iconProps = { style: { fontSize: '18px' } };
+        let icon;
+        let titleTxt;
+
+        if (theme === 'system') {
+            icon = <DesktopOutlined {...iconProps} />;
+            titleTxt = "Tema del Sistema";
+        } else if (theme === 'light') {
+            icon = <BulbOutlined {...iconProps} />;
+            titleTxt = "Modo Claro";
+        } else {
+            icon = <MoonOutlined {...iconProps} />;
+            titleTxt = "Modo Oscuro";
+        }
+
+        return (
+            <Tooltip title={titleTxt} placement="bottom">
+                <Button
+                    type="text"
+                    shape="circle"
+                    icon={icon}
+                    onClick={cycleTheme}
+                    size="large"
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                />
+            </Tooltip>
+        );
     };
 
     return (

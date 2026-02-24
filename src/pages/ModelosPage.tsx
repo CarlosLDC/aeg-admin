@@ -118,7 +118,6 @@ const ModelosPage: React.FC = () => {
             <Form.Item
                 name="providencia"
                 label="Providencia"
-                rules={[{ required: true, message: 'La providencia es obligatoria' }]}
                 normalize={normalizeText}
             >
                 <Input placeholder="Ej: SENIAT/0001" className="uppercase-input" />
@@ -127,7 +126,6 @@ const ModelosPage: React.FC = () => {
             <Form.Item
                 name="fecha_homologacion"
                 label="Fecha de Homologación"
-                rules={[{ required: true, message: 'La fecha de homologación es obligatoria' }]}
             >
                 <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
             </Form.Item>

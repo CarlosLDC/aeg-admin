@@ -40,8 +40,8 @@ export interface ModeloImpresora {
   marca: string;
   codigo_modelo: string;
   precio: number;
-  providencia: string;
-  fecha_homologacion: string;
+  providencia?: string;
+  fecha_homologacion?: string;
   created_at: string;
 }
 

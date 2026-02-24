@@ -1,6 +1,6 @@
 import { Layout, Avatar, Dropdown, Space, Typography, Grid } from 'antd';
-import type { MenuProps } from 'antd';
-import { UserOutlined, SettingOutlined, LogoutOutlined, BellOutlined, BgColorsOutlined, DesktopOutlined, BulbOutlined, MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons';
+
+import { UserOutlined, SettingOutlined, LogoutOutlined, BellOutlined, DesktopOutlined, BulbOutlined, MenuUnfoldOutlined, MenuFoldOutlined, MoonOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,28 +39,16 @@ const AppHeader = ({ collapsed, onCollapse }: HeaderProps) => {
         ],
     };
 
-    const themeMenu: MenuProps = {
-        items: [
-            {
-                key: 'light',
-                icon: <BulbOutlined />,
-                label: 'Modo Claro',
-                onClick: () => setTheme('light'),
-            },
-            {
-                key: 'dark',
-                icon: <BgColorsOutlined />,
-                label: 'Modo Oscuro',
-                onClick: () => setTheme('dark'),
-            },
-            {
-                key: 'system',
-                icon: <DesktopOutlined />,
-                label: 'Tema del Sistema',
-                onClick: () => setTheme('system'),
-            }
-        ],
-        selectedKeys: [theme]
+    const cycleTheme = () => {
+        if (theme === 'system') setTheme('light');
+        else if (theme === 'light') setTheme('dark');
+        else setTheme('system');
+    };
+
+    const getThemeIcon = () => {
+        if (theme === 'system') return <DesktopOutlined title="Tema del Sistema" style={{ fontSize: '18px', cursor: 'pointer' }} onClick={cycleTheme} />;
+        if (theme === 'light') return <BulbOutlined title="Modo Claro" style={{ fontSize: '18px', cursor: 'pointer' }} onClick={cycleTheme} />;
+        return <MoonOutlined title="Modo Oscuro" style={{ fontSize: '18px', cursor: 'pointer' }} onClick={cycleTheme} />;
     };
 
     return (
@@ -81,9 +69,7 @@ const AppHeader = ({ collapsed, onCollapse }: HeaderProps) => {
             )}
             <div style={{ flex: 1 }} />
             <Space size={32} align="center">
-                <Dropdown menu={themeMenu} trigger={['click']}>
-                    <BgColorsOutlined style={{ fontSize: '18px', cursor: 'pointer' }} />
-                </Dropdown>
+                {getThemeIcon()}
                 <BellOutlined style={{ fontSize: '18px', cursor: 'pointer' }} />
                 <Dropdown menu={userMenu} trigger={['click']}>
                     <Space style={{ cursor: 'pointer' }}>

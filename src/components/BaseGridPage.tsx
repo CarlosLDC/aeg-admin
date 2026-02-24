@@ -3,19 +3,19 @@ import { AgGridReact } from 'ag-grid-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { themeQuartz } from 'ag-grid-community';
 import type { ColDef } from 'ag-grid-community';
-import { Typography, Card, Button, Modal, Form, message, Space } from 'antd';
+import { Card, Button, Modal, Form, message, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
+import PageContainer from './PageContainer';
 
-const { Title } = Typography;
 
-interface BaseGridPageProps<T> {
+interface BaseGridPageProps<T, TInsert = Partial<T>, TUpdate = Partial<T>, TId = number> {
     title: string;
     entityName: string; // Used for messages (e.g., 'Empresa', 'Máquina')
     columnDefs: ColDef<T>[];
     fetchFn: () => Promise<T[]>;
-    createFn: (values: any) => Promise<any>;
-    updateFn?: (id: number | string, values: any) => Promise<any>;
-    deleteFn?: (ids: (number | string)[]) => Promise<any>;
+    createFn: (values: TInsert) => Promise<T>;
+    updateFn?: (id: TId, values: TUpdate) => Promise<T>;
+    deleteFn?: (ids: TId[]) => Promise<void>;
     formItems?: React.ReactNode;
     idField?: keyof T;
     permissions?: {
@@ -25,7 +25,7 @@ interface BaseGridPageProps<T> {
     };
 }
 
-const BaseGridPage = <T extends { [key: string]: any }>({
+const BaseGridPage = <T extends { [key: string]: any }, TInsert = Partial<T>, TUpdate = Partial<T>, TId = number>({
     title,
     entityName,
     columnDefs,
@@ -36,7 +36,7 @@ const BaseGridPage = <T extends { [key: string]: any }>({
     formItems,
     idField = 'id' as keyof T,
     permissions = { create: true, update: true, delete: true }
-}: BaseGridPageProps<T>) => {
+}: BaseGridPageProps<T, TInsert, TUpdate, TId>) => {
     const { isDark } = useTheme();
 
     const myTheme = useMemo(() => isDark
@@ -55,17 +55,15 @@ const BaseGridPage = <T extends { [key: string]: any }>({
     const [loading, setLoading] = useState(false);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [form] = Form.useForm();
-    const [selectedIds, setSelectedIds] = useState<(number | string)[]>([]);
+    const [selectedIds, setSelectedIds] = useState<TId[]>([]);
     const [gridApi, setGridApi] = useState<any>(null);
 
     const getFriendlyErrorMessage = (error: any, action: string) => {
-        const code = error?.code || error?.status;
-
-        if (code === '23503') {
-            return `No se puede eliminar ${entityName.toLowerCase()}${selectedIds.length > 1 ? 's' : ''} porque tiene datos asociados (ej: máquinas o registros vinculados).`;
-        }
-        if (code === '23505') {
-            return `Ya existe ${entityName.toLowerCase()} con esos datos únicos (ej: RIF duplicado).`;
+        if (error?.name === 'DomainError') {
+            if (error.type === 'FOREIGN_KEY_VIOLATION' && selectedIds.length > 1) {
+                return `No se pueden eliminar las ${entityName.toLowerCase()}s porque tienen datos asociados.`;
+            }
+            return error.message;
         }
 
         return error.message || `Error al ${action} ${entityName.toLowerCase()}${action === 'eliminar' ? 's' : ''}`;
@@ -123,11 +121,17 @@ const BaseGridPage = <T extends { [key: string]: any }>({
 
         try {
             if (updateFn) {
-                await updateFn(rowData[idField], { [colDef.field]: newValue });
+                await updateFn(rowData[idField] as TId, { [colDef.field]: newValue } as unknown as TUpdate);
             }
-            message.success(`Campo "${colDef.headerName}" actualizado exitosamente`);
+            message.success({
+                content: `Campo "${colDef.headerName}" actualizado exitosamente`,
+                key: 'grid-update-success'
+            });
         } catch (error: any) {
-            message.error(getFriendlyErrorMessage(error, 'actualizar'));
+            message.error({
+                content: getFriendlyErrorMessage(error, 'actualizar'),
+                key: 'grid-update-error'
+            });
             fetchData();
         }
     };
@@ -138,7 +142,7 @@ const BaseGridPage = <T extends { [key: string]: any }>({
             setLoading(true);
 
             if (createFn) {
-                await createFn(values);
+                await createFn(values as TInsert);
             }
             message.success(`${entityName} creada exitosamente`);
 
@@ -162,47 +166,38 @@ const BaseGridPage = <T extends { [key: string]: any }>({
         resizable: true,
     }), []);
 
-    return (
-        <div className="fade-in">
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '24px',
-                flexWrap: 'wrap',
-                gap: '16px'
-            }}>
-                <Title level={2} style={{ margin: 0, minWidth: '200px' }}>
-                    {title}
-                </Title>
-                <Space wrap>
-                    <Button type="default" icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>
-                        Refrescar
-                    </Button>
-                    <Button type="default" icon={<DownloadOutlined />} onClick={handleExportCsv}>
-                        Exportar CSV
-                    </Button>
-                    {selectedIds.length > 0 && permissions.delete && deleteFn && (
-                        <Button
-                            danger
-                            type="primary"
-                            icon={<DeleteOutlined />}
-                            onClick={handleBulkDelete}
-                            loading={loading}
-                        >
-                            Eliminar Seleccionados ({selectedIds.length})
-                        </Button>
-                    )}
-                    {permissions.create && Boolean(createFn) && (
-                        <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)}>
-                            Nueva {entityName}
-                        </Button>
-                    )}
-                </Space>
-            </div>
+    const extraActions = (
+        <Space wrap>
+            <Button type="default" icon={<ReloadOutlined />} onClick={fetchData} loading={loading}>
+                Refrescar
+            </Button>
+            <Button type="default" icon={<DownloadOutlined />} onClick={handleExportCsv}>
+                Exportar CSV
+            </Button>
+            {selectedIds.length > 0 && permissions.delete && deleteFn && (
+                <Button
+                    danger
+                    type="primary"
+                    icon={<DeleteOutlined />}
+                    onClick={handleBulkDelete}
+                    loading={loading}
+                >
+                    Eliminar Seleccionados ({selectedIds.length})
+                </Button>
+            )}
+            {permissions.create && Boolean(createFn) && (
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)}>
+                    Nueva {entityName}
+                </Button>
+            )}
+        </Space>
+    );
 
-            <Card bordered={false} style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ height: 'calc(100vh - 250px)', width: '100%' }}>
+    return (
+        <PageContainer title={title} extra={extraActions}>
+
+            <Card bordered={false} style={{ padding: 0 }}>
+                <div style={{ height: 'calc(100vh - 250px)', width: '100%', overflow: 'hidden' }}>
                     <AgGridReact
                         key={isDark ? 'dark' : 'light'}
                         theme={myTheme}
@@ -238,12 +233,13 @@ const BaseGridPage = <T extends { [key: string]: any }>({
                 confirmLoading={loading}
                 okText="Guardar"
                 cancelText="Cancelar"
+                centered
             >
                 <Form form={form} layout="vertical" preserve={false} style={{ marginTop: '24px' }}>
                     {formItems}
                 </Form>
             </Modal>
-        </div>
+        </PageContainer>
     );
 };
 

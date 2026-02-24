@@ -2,32 +2,38 @@ import React, { useMemo } from 'react';
 import type { ColDef } from 'ag-grid-community';
 import { Form, Input, message } from 'antd';
 import { empresasService } from '../services/empresasService';
-import type { Empresa } from '../types/database';
+import type { Empresa, EmpresaInsert, EmpresaUpdate } from '../types/database';
 import BaseGridPage from '../components/BaseGridPage';
 import { normalizeText } from '../utils/textUtils';
+import { isValidRif, RIF_VALIDATION_ERROR_MSG, getRifRule } from '../utils/validators';
 
 const EmpresasPage: React.FC = () => {
     const columnDefs = useMemo<ColDef<Empresa>[]>(() => [
         {
             field: 'id',
             headerName: 'ID',
-            width: 100,
+            width: 80,
             sortable: true,
             checkboxSelection: true,
             headerCheckboxSelection: true,
+            pinned: 'left'
         },
         {
             field: 'rif',
             headerName: 'RIF',
+            minWidth: 150,
             flex: 1,
             filter: true,
             sortable: true,
             editable: true,
+            cellClass: 'uppercase-input',
             valueParser: (params) => {
                 const newValue = normalizeText(params.newValue);
-                const rifRegex = /^[VEJPG][0-9]{7,9}$/;
-                if (!rifRegex.test(newValue)) {
-                    message.error('Formato de RIF inválido. Debe ser: V/E/J/P/G seguido de 7 a 9 números.');
+                if (!isValidRif(newValue)) {
+                    message.error({
+                        content: RIF_VALIDATION_ERROR_MSG,
+                        key: 'rif-validation-error'
+                    });
                     return params.oldValue;
                 }
                 return newValue;
@@ -36,16 +42,18 @@ const EmpresasPage: React.FC = () => {
         {
             field: 'razon_social',
             headerName: 'Razón Social',
+            minWidth: 250,
             flex: 2,
             filter: true,
             sortable: true,
             editable: true,
+            cellClass: 'uppercase-input',
             valueParser: (params) => normalizeText(params.newValue)
         },
         {
             field: 'created_at',
             headerName: 'Fecha de Creación',
-            flex: 1,
+            width: 150,
             sortable: true,
             valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : ''
         },
@@ -58,7 +66,7 @@ const EmpresasPage: React.FC = () => {
                 label="RIF"
                 rules={[
                     { required: true, message: 'Por favor ingrese el RIF' },
-                    { pattern: /^[VEJPG][0-9]{7,9}$/i, message: 'Formato inválido. Ejemplo: J123456789' }
+                    getRifRule()
                 ]}
                 normalize={normalizeText}
             >
@@ -77,14 +85,14 @@ const EmpresasPage: React.FC = () => {
     );
 
     return (
-        <BaseGridPage<Empresa>
+        <BaseGridPage<Empresa, EmpresaInsert, EmpresaUpdate>
             title="Empresas"
             entityName="Empresa"
             columnDefs={columnDefs}
             fetchFn={empresasService.getEmpresas}
             createFn={empresasService.createEmpresa}
-            updateFn={empresasService.updateEmpresa as any}
-            deleteFn={empresasService.deleteEmpresas as any}
+            updateFn={empresasService.updateEmpresa}
+            deleteFn={empresasService.deleteEmpresas}
             formItems={formItems}
             permissions={{ create: true, update: true, delete: true }}
         />

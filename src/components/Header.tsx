@@ -1,6 +1,7 @@
 import { Layout, Avatar, Dropdown, Space, Typography, Grid } from 'antd';
 import type { MenuProps } from 'antd';
 import { UserOutlined, SettingOutlined, LogoutOutlined, BellOutlined, BgColorsOutlined, DesktopOutlined, BulbOutlined, MenuUnfoldOutlined, MenuFoldOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -14,8 +15,9 @@ interface HeaderProps {
 
 const AppHeader = ({ collapsed, onCollapse }: HeaderProps) => {
     const { theme, setTheme } = useTheme();
-    const { signOut, user } = useAuth();
+    const { signOut, user, profile } = useAuth();
     const screens = Grid.useBreakpoint();
+    const navigate = useNavigate();
 
     const userMenu = {
         items: [
@@ -23,6 +25,7 @@ const AppHeader = ({ collapsed, onCollapse }: HeaderProps) => {
                 key: '1',
                 icon: <SettingOutlined />,
                 label: 'Configuración',
+                onClick: () => navigate('/perfil')
             },
             {
                 key: '2',
@@ -61,7 +64,13 @@ const AppHeader = ({ collapsed, onCollapse }: HeaderProps) => {
     };
 
     return (
-        <AntHeader style={{ display: 'flex', alignItems: 'center', padding: '0 24px' }}>
+        <AntHeader style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 24px',
+            borderBottom: `1px solid ${theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
+            lineHeight: '64px'
+        }}>
             {!screens.lg && (
                 <div
                     onClick={() => onCollapse(!collapsed)}
@@ -78,9 +87,9 @@ const AppHeader = ({ collapsed, onCollapse }: HeaderProps) => {
                 <BellOutlined style={{ fontSize: '18px', cursor: 'pointer' }} />
                 <Dropdown menu={userMenu} trigger={['click']}>
                     <Space style={{ cursor: 'pointer' }}>
-                        <Avatar icon={<UserOutlined />} />
+                        <Avatar src={profile?.foto_perfil} icon={!profile?.foto_perfil && <UserOutlined />} />
                         {screens.md && (
-                            <Text strong style={{ color: 'inherit' }}>{user?.email || 'Usuario Administrador'}</Text>
+                            <Text strong style={{ color: 'inherit' }}>{profile?.nombre || user?.email || 'Usuario Administrador'}</Text>
                         )}
                     </Space>
                 </Dropdown>

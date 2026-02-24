@@ -1,10 +1,9 @@
-import { Layout, Menu, Typography, Grid, Drawer } from 'antd';
-import { DashboardOutlined, BankOutlined, ShopOutlined } from '@ant-design/icons';
+import { Layout, Menu, Grid, Drawer } from 'antd';
+import { DashboardOutlined, BankOutlined, ShopOutlined, PrinterOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 
 const { Sider } = Layout;
-const { Title, Text } = Typography;
 
 interface SidebarProps {
   collapsed: boolean;
@@ -12,40 +11,27 @@ interface SidebarProps {
 }
 
 const SidebarContent: React.FC<{ isDark: boolean; menuItems: any[]; currentPath: string; onNavigate: (key: string) => void }> = ({ isDark, menuItems, currentPath, onNavigate }) => {
-  const titleColor = isDark ? '#ffffff' : '#181D1F';
-  const subtitleColor = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(24,29,31,0.45)';
-  const accentBarColor = '#2196F3';
-
   return (
     <>
       {/* Brand block */}
       <div style={{
-        padding: '28px 20px 20px',
+        padding: '24px 20px',
         display: 'flex',
+        justifyContent: 'center',
         alignItems: 'center',
-        gap: '10px',
         borderBottom: '1px solid var(--border-color)',
         marginBottom: '8px'
       }}>
-        {/* Blue accent bar */}
-        <div style={{
-          width: '4px',
-          height: '36px',
-          background: accentBarColor,
-          borderRadius: '2px',
-          flexShrink: 0
-        }} />
-        <div>
-          <Title
-            level={4}
-            style={{ margin: 0, color: titleColor, fontFamily: 'Outfit', letterSpacing: '-0.02em', lineHeight: 1.2 }}
-          >
-            AEG Admin
-          </Title>
-          <Text style={{ color: subtitleColor, fontSize: '11px', fontFamily: 'Inter', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            Máquinas Fiscales
-          </Text>
-        </div>
+        <img
+          src="/logo.png"
+          alt="AEG Logo"
+          style={{
+            maxWidth: '100%',
+            height: 'auto',
+            maxHeight: '48px',
+            objectFit: 'contain'
+          }}
+        />
       </div>
 
       <Menu
@@ -89,6 +75,11 @@ const Sidebar = ({ collapsed, onCollapse }: SidebarProps) => {
       key: '/sucursales',
       icon: <ShopOutlined />,
       label: 'Sucursales',
+    },
+    {
+      key: '/modelos',
+      icon: <PrinterOutlined />,
+      label: 'Modelos',
     },
   ];
 

@@ -4,6 +4,8 @@ import Dashboard from './pages/Dashboard';
 import EmpresasPage from './pages/EmpresasPage';
 import SucursalesPage from './pages/SucursalesPage';
 import LoginPage from './pages/LoginPage';
+import ProfilePage from './pages/ProfilePage';
+import ModelosPage from './pages/ModelosPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 import { ConfigProvider, theme } from 'antd';
@@ -26,7 +28,7 @@ function App() {
           Layout: {
             // These must be set explicitly — the algorithm alone doesn't
             // override Layout's internal bg tokens in Ant Design v5.
-            headerBg: isDark ? '#141414' : '#ffffff',
+            headerBg: isDark ? '#1f1f1f' : '#ffffff',
             siderBg: isDark ? '#1f1f1f' : '#ffffff',
             bodyBg: isDark ? '#141414' : '#f5f5f5',
           },
@@ -43,6 +45,8 @@ function App() {
                 <Route index element={<Dashboard />} />
                 <Route path="empresas" element={<EmpresasPage />} />
                 <Route path="sucursales" element={<SucursalesPage />} />
+                <Route path="modelos" element={<ModelosPage />} />
+                <Route path="perfil" element={<ProfilePage />} />
               </Route>
             </Route>
           </Routes>

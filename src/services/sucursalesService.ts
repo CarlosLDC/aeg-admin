@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { Sucursal, SucursalInsert, SucursalUpdate } from '../types/database';
+import { handleSupabaseError } from '../utils/errorUtils';
 
 export const sucursalesService = {
   async getSucursales(): Promise<Sucursal[]> {
@@ -8,7 +9,7 @@ export const sucursalesService = {
       .select('*')
       .order('id', { ascending: false });
     
-    if (error) throw error;
+    if (error) handleSupabaseError(error, 'sucursal');
     return data || [];
   },
 
@@ -19,7 +20,7 @@ export const sucursalesService = {
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) handleSupabaseError(error, 'sucursal');
     return data;
   },
 
@@ -31,7 +32,7 @@ export const sucursalesService = {
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) handleSupabaseError(error, 'sucursal');
     return data;
   },
 
@@ -41,15 +42,15 @@ export const sucursalesService = {
       .delete()
       .eq('id', id);
       
-    if (error) throw error;
+    if (error) handleSupabaseError(error, 'sucursal');
   },
 
-  async deleteSucursales(ids: (number | string)[]): Promise<void> {
+  async deleteSucursales(ids: number[]): Promise<void> {
     const { error } = await supabase
       .from('sucursales')
       .delete()
       .in('id', ids);
       
-    if (error) throw error;
+    if (error) handleSupabaseError(error, 'sucursal');
   }
 };

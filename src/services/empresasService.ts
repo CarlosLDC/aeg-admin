@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { Empresa, EmpresaInsert, EmpresaUpdate } from '../types/database';
+import { handleSupabaseError } from '../utils/errorUtils';
 
 export const empresasService = {
   async getEmpresas(): Promise<Empresa[]> {
@@ -8,7 +9,7 @@ export const empresasService = {
       .select('*')
       .order('created_at', { ascending: false });
     
-    if (error) throw error;
+    if (error) handleSupabaseError(error, 'empresa');
     return data || [];
   },
 
@@ -19,7 +20,7 @@ export const empresasService = {
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) handleSupabaseError(error, 'empresa');
     return data;
   },
 
@@ -31,7 +32,7 @@ export const empresasService = {
       .select()
       .single();
       
-    if (error) throw error;
+    if (error) handleSupabaseError(error, 'empresa');
     return data;
   },
 
@@ -41,7 +42,7 @@ export const empresasService = {
       .delete()
       .eq('id', id);
       
-    if (error) throw error;
+    if (error) handleSupabaseError(error, 'empresa');
   },
 
   async deleteEmpresas(ids: number[]): Promise<void> {
@@ -50,6 +51,6 @@ export const empresasService = {
       .delete()
       .in('id', ids);
       
-    if (error) throw error;
+    if (error) handleSupabaseError(error, 'empresa');
   }
 };

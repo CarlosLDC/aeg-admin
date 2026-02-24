@@ -66,3 +66,13 @@ body {
   --ag-font-family: 'Inter', sans-serif;
   --ag-font-size: 14px;
 }
+
+/* Force uppercase in cell editors */
+.uppercase-input .ag-input-field-input {
+  text-transform: uppercase !important;
+}
+
+/* Also for standard inputs if used */
+.uppercase-input input {
+  text-transform: uppercase !important;
+}

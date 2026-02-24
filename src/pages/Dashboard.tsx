@@ -1,17 +1,18 @@
 import React from 'react';
 import { Row, Col, Card, Statistic, Typography } from 'antd';
+
+const { Text } = Typography;
 import { ArrowUpOutlined, DesktopOutlined, SyncOutlined, AlertOutlined } from '@ant-design/icons';
 
-const { Title } = Typography;
+import PageContainer from '../components/PageContainer';
 
 const Dashboard: React.FC = () => {
     return (
-        <div className="fade-in">
-            <Title level={2} style={{ marginBottom: '24px' }}>Resumen del Panel</Title>
+        <PageContainer title="Resumen del Panel">
 
             <Row gutter={[24, 24]} style={{ marginTop: '24px' }}>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                <Col xs={24} sm={12} lg={6} style={{ display: 'flex' }}>
+                    <Card style={{ width: '100%', height: '100%' }}>
                         <Statistic
                             title="Máquinas Activas"
                             value={1128}
@@ -19,8 +20,8 @@ const Dashboard: React.FC = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                <Col xs={24} sm={12} lg={6} style={{ display: 'flex' }}>
+                    <Card style={{ width: '100%', height: '100%' }}>
                         <Statistic
                             title="Tasa de Sincronización"
                             value={98.9}
@@ -31,8 +32,8 @@ const Dashboard: React.FC = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                <Col xs={24} sm={12} lg={6} style={{ display: 'flex' }}>
+                    <Card style={{ width: '100%', height: '100%' }}>
                         <Statistic
                             title="Sincronizaciones Pendientes"
                             value={45}
@@ -40,8 +41,8 @@ const Dashboard: React.FC = () => {
                         />
                     </Card>
                 </Col>
-                <Col xs={24} sm={12} lg={6}>
-                    <Card>
+                <Col xs={24} sm={12} lg={6} style={{ display: 'flex' }}>
+                    <Card style={{ width: '100%', height: '100%' }}>
                         <Statistic
                             title="Alertas"
                             value={12}
@@ -56,13 +57,13 @@ const Dashboard: React.FC = () => {
             <Row gutter={[24, 24]} style={{ marginTop: '24px' }}>
                 <Col span={24}>
                     <Card style={{ minHeight: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Typography.Text type="secondary">
+                        <Text type="secondary">
                             Espacio para Gráficos de Análisis
-                        </Typography.Text>
+                        </Text>
                     </Card>
                 </Col>
             </Row>
-        </div>
+        </PageContainer>
     );
 };
 

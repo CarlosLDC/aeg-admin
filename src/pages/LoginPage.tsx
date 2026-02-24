@@ -75,6 +75,7 @@ const LoginPage: React.FC = () => {
                     onFinish={onFinish}
                     layout="vertical"
                     requiredMark={false}
+                    validateTrigger="onBlur"
                 >
                     <Form.Item
                         name="email"

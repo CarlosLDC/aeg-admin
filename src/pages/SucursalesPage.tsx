@@ -4,7 +4,7 @@ import { Form, Input, Select, Switch, Space } from 'antd';
 import { CheckOutlined } from '@ant-design/icons';
 import { sucursalesService } from '../services/sucursalesService';
 import { empresasService } from '../services/empresasService';
-import type { Sucursal, Empresa } from '../types/database';
+import type { Sucursal, SucursalInsert, SucursalUpdate, Empresa } from '../types/database';
 import BaseGridPage from '../components/BaseGridPage';
 import { normalizeText } from '../utils/textUtils';
 
@@ -36,7 +36,8 @@ const SucursalesPage: React.FC = () => {
         {
             field: 'id_empresa',
             headerName: 'Empresa',
-            width: 200,
+            minWidth: 200,
+            flex: 1,
             filter: 'agTextColumnFilter',
             filterValueGetter: (params) => {
                 if (!params.data) return '';
@@ -47,17 +48,19 @@ const SucursalesPage: React.FC = () => {
         {
             field: 'ciudad',
             headerName: 'Ciudad',
-            width: 150,
+            minWidth: 150,
             filter: true,
             editable: true,
+            cellClass: 'uppercase-input',
             valueParser: (params) => normalizeText(params.newValue)
         },
         {
             field: 'estado',
             headerName: 'Estado',
-            width: 150,
+            minWidth: 150,
             filter: true,
             editable: true,
+            cellClass: 'uppercase-input',
             valueParser: (params) => normalizeText(params.newValue)
         },
         {
@@ -67,6 +70,7 @@ const SucursalesPage: React.FC = () => {
             flex: 1,
             filter: true,
             editable: true,
+            cellClass: 'uppercase-input',
             valueParser: (params) => normalizeText(params.newValue)
         },
         {
@@ -225,14 +229,14 @@ const SucursalesPage: React.FC = () => {
     );
 
     return (
-        <BaseGridPage<Sucursal>
+        <BaseGridPage<Sucursal, SucursalInsert, SucursalUpdate>
             title="Sucursales"
             entityName="Sucursal"
             columnDefs={columnDefs}
             fetchFn={sucursalesService.getSucursales}
             createFn={sucursalesService.createSucursal}
-            updateFn={sucursalesService.updateSucursal as any}
-            deleteFn={sucursalesService.deleteSucursales as any}
+            updateFn={sucursalesService.updateSucursal}
+            deleteFn={sucursalesService.deleteSucursales}
             formItems={formItems}
             permissions={{ create: true, update: true, delete: true }}
         />

@@ -59,6 +59,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoading(false);
         });
 
+        // Refresh session when returning to the tab
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    if (session) {
+                        setSession(session);
+                        if (session.user) {
+                            fetchProfile(session.user.id);
+                        }
+                    }
+                });
+            }
+        };
+
+        window.addEventListener('visibilitychange', handleVisibilityChange);
+
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (_event, session) => {
@@ -74,7 +90,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         );
 
-        return () => subscription.unsubscribe();
+        return () => {
+            subscription.unsubscribe();
+            window.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
     }, []);
 
     const signOut = async () => {

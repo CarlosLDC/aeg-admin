@@ -6,8 +6,10 @@ import type { Empresa, EmpresaInsert, EmpresaUpdate } from '../types/database';
 import BaseGridPage from '../components/BaseGridPage';
 import { normalizeText } from '../utils/textUtils';
 import { isValidRif, RIF_VALIDATION_ERROR_MSG, getRifRule } from '../utils/validators';
+import { usePermissions } from '../hooks/usePermissions';
 
 const EmpresasPage: React.FC = () => {
+    const permissions = usePermissions();
     const columnDefs = useMemo<ColDef<Empresa>[]>(() => [
         {
             field: 'id',
@@ -94,7 +96,7 @@ const EmpresasPage: React.FC = () => {
             updateFn={empresasService.updateEmpresa}
             deleteFn={empresasService.deleteEmpresas}
             formItems={formItems}
-            permissions={{ create: true, update: true, delete: true }}
+            permissions={permissions}
         />
     );
 };

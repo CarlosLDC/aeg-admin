@@ -5,7 +5,9 @@ import { modelosService } from '../services/modelosService';
 import type { ModeloImpresora, ModeloImpresoraInsert, ModeloImpresoraUpdate } from '../types/database';
 import BaseGridPage from '../components/BaseGridPage';
 import { normalizeText } from '../utils/textUtils';
+import { usePermissions } from '../hooks/usePermissions';
 const ModelosPage: React.FC = () => {
+    const permissions = usePermissions();
     const columnDefs = useMemo<ColDef<ModeloImpresora>[]>(() => [
         {
             field: 'id',
@@ -142,7 +144,7 @@ const ModelosPage: React.FC = () => {
             updateFn={modelosService.updateModelo}
             deleteFn={modelosService.deleteModelos}
             formItems={formItems}
-            permissions={{ create: true, update: true, delete: true }}
+            permissions={permissions}
         />
     );
 };

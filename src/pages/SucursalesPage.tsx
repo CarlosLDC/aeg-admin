@@ -7,8 +7,10 @@ import { empresasService } from '../services/empresasService';
 import type { Sucursal, SucursalInsert, SucursalUpdate, Empresa } from '../types/database';
 import BaseGridPage from '../components/BaseGridPage';
 import { normalizeText } from '../utils/textUtils';
+import { usePermissions } from '../hooks/usePermissions';
 
 const SucursalesPage: React.FC = () => {
+    const permissions = usePermissions();
     const [empresas, setEmpresas] = useState<Empresa[]>([]);
 
     useEffect(() => {
@@ -238,7 +240,7 @@ const SucursalesPage: React.FC = () => {
             updateFn={sucursalesService.updateSucursal}
             deleteFn={sucursalesService.deleteSucursales}
             formItems={formItems}
-            permissions={{ create: true, update: true, delete: true }}
+            permissions={permissions}
         />
     );
 };

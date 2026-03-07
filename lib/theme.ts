@@ -1,0 +1,37 @@
+import { createTheme, alpha } from '@mui/material/styles'
+import { Roboto } from 'next/font/google'
+
+export const roboto = Roboto({
+  weight: ['300', '400', '500', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+})
+
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: '#1976d2', // Standard MUI Blue
+    },
+    secondary: {
+      main: '#9c27b0', // Standard MUI Purple
+    },
+  },
+  typography: {
+    fontFamily: roboto.style.fontFamily,
+  },
+  shape: {
+    borderRadius: 4,
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+        },
+      },
+    },
+  },
+})
+
+export default theme

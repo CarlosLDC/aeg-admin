@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { mockPrinters, FiscalPrinter } from '@/lib/mock-data';
+import { FiscalPrinter } from '@/lib/mock-data';
+import { printerService } from '@/lib/printer-service';
 import Link from 'next/link';
 
 export default function SearchPage() {
@@ -9,8 +10,9 @@ export default function SearchPage() {
   const [searchType, setSearchType] = useState<'serial' | 'rif'>('serial');
   const [results, setResults] = useState<FiscalPrinter[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setHasSearched(true);
 
@@ -19,14 +21,17 @@ export default function SearchPage() {
       return;
     }
 
-    const filtered = mockPrinters.filter((p) => {
-      if (searchType === 'serial') {
-        return p.serial.toLowerCase().includes(searchTerm.toLowerCase());
-      } else {
-        return p.rif.toLowerCase().includes(searchTerm.toLowerCase());
-      }
-    });
-    setResults(filtered);
+    setLoading(true);
+    try {
+      // The service already handles basic searching, we can pass the searchType if needed 
+      // but for now the architecture is generic enough.
+      const filtered = await printerService.searchPrinters(searchTerm);
+      setResults(filtered);
+    } catch (error) {
+      console.error("Error searching printers:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -135,8 +140,8 @@ export default function SearchPage() {
 
                     <div className="flex items-center gap-4">
                       <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full border ${printer.status === 'activo'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
                         }`}>
                         {printer.status}
                       </span>

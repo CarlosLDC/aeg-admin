@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, use } from 'react';
-import { mockPrinters, FiscalPrinter, TechnicalReview, AnnualInspection } from '@/lib/mock-data';
+import { useState, use, useEffect } from 'react';
+import { FiscalPrinter, TechnicalReview, AnnualInspection } from '@/lib/mock-data';
+import { printerService } from '@/lib/printer-service';
 import Link from 'next/link';
 
 // Helper to chunk arrays
@@ -15,11 +16,31 @@ function chunkArray<T>(array: T[], size: number): T[][] {
 
 export default function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const [printer] = useState<FiscalPrinter | undefined>(() => mockPrinters.find((p) => p.id === id));
+    const [printer, setPrinter] = useState<FiscalPrinter | undefined>(undefined);
+    const [loading, setLoading] = useState(true);
 
     // Core States
     const [viewMode, setViewMode] = useState<'info' | 'tech' | 'inspection'>('info');
     const [currentPage, setCurrentPage] = useState(0);
+
+    useEffect(() => {
+        const loadData = async () => {
+            setLoading(true);
+            const data = await printerService.getPrinterById(id);
+            setPrinter(data);
+            setLoading(false);
+        };
+        loadData();
+    }, [id]);
+
+    if (loading) {
+        return (
+            <main className="container mx-auto px-4 py-32 max-w-4xl text-center">
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-slate-500 font-medium">Cargando Libro Fiscal...</p>
+            </main>
+        );
+    }
 
     if (!printer) {
         return (

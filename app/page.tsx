@@ -1,65 +1,193 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState } from 'react';
+import { mockPrinters, FiscalPrinter } from '@/lib/mock-data';
+import Link from 'next/link';
+
+export default function SearchPage() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchType, setSearchType] = useState<'serial' | 'rif'>('serial');
+  const [results, setResults] = useState<FiscalPrinter[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setHasSearched(true);
+
+    if (searchTerm.length < 3) {
+      setResults([]);
+      return;
+    }
+
+    const filtered = mockPrinters.filter((p) => {
+      if (searchType === 'serial') {
+        return p.serial.toLowerCase().includes(searchTerm.toLowerCase());
+      } else {
+        return p.rif.toLowerCase().includes(searchTerm.toLowerCase());
+      }
+    });
+    setResults(filtered);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <main className="container mx-auto px-6 max-w-4xl py-12 md:py-20">
+
+      <div className="text-center mb-16 space-y-4">
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900">
+          Auditoría de Equipo Fiscal
+        </h1>
+        <p className="text-slate-500 text-lg md:text-xl max-w-2xl mx-auto font-light leading-relaxed">
+          Verificación segura del historial de mantenimiento y estatus operativo en la red AEG, autorizada por el SENIAT.
+        </p>
+      </div>
+
+      {/* Search Container */}
+      <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 mb-16 relative overflow-hidden">
+        {/* Subtle decorative glow */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl -z-10 opacity-60 translate-x-1/2 -translate-y-1/2" />
+
+        <form onSubmit={handleSearch} className="relative z-10 flex flex-col md:flex-row gap-6 items-center">
+
+          {/* Segmented Control */}
+          <div className="flex bg-slate-100/80 p-1 rounded-xl w-full md:w-auto h-14">
+            <button
+              type="button"
+              onClick={() => setSearchType('serial')}
+              className={`flex-1 md:w-36 rounded-lg font-medium text-sm transition-all duration-200 ${searchType === 'serial'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+                }`}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              Serial
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchType('rif')}
+              className={`flex-1 md:w-36 rounded-lg font-medium text-sm transition-all duration-200 ${searchType === 'rif'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+                }`}
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              RIF
+            </button>
+          </div>
+
+          {/* Premium Input */}
+          <div className="relative w-full group flex flex-col md:flex-row gap-4 h-14">
+            <div className="relative flex-1 h-full">
+              <input
+                type="text"
+                placeholder={searchType === 'serial' ? 'Ej: AEG-H0001234' : 'Ej: J-12345678-9'}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-full bg-slate-50 border border-slate-200 rounded-xl px-5 text-lg outline-none transition-all duration-300 focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-500/10 text-slate-900 placeholder:text-slate-400"
+              />
+              <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
+                <SearchIcon size={20} />
+              </div>
+            </div>
+            {searchTerm.length >= 3 && (
+              <button
+                type="submit"
+                className="h-full px-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-sm active:scale-[0.98] hidden md:block"
+              >
+                Auditar
+              </button>
+            )}
+          </div>
+
+        </form>
+      </div>
+
+      {/* Results Area */}
+      {hasSearched && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex items-center justify-between mb-6 px-2">
+            <h2 className="text-xl font-bold text-slate-900">Resultados Centrales</h2>
+            <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">{results.length} encontrados</span>
+          </div>
+
+          <div className="space-y-4">
+            {results.length > 0 ? (
+              results.map((printer) => (
+                <Link
+                  key={printer.id}
+                  href={`/fiscal-book/${printer.id}`}
+                  className="block bg-white p-6 rounded-2xl border border-slate-100 hover:border-slate-300 hover:shadow-md transition-all group relative overflow-hidden"
+                >
+                  {/* Hover Accent Line */}
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors mb-2">
+                        {printer.businessName}
+                      </h3>
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md font-mono border border-slate-100">
+                          RIF: {printer.rif}
+                        </span>
+                        <span className="bg-slate-50 text-slate-600 px-2.5 py-1 rounded-md font-mono border border-slate-100">
+                          SN: {printer.serial}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full border ${printer.status === 'activo'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                        {printer.status}
+                      </span>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 border border-slate-100 text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-100 transition-all">
+                        <ArrowRight size={20} />
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center text-slate-500">
+                {searchTerm.length < 3
+                  ? "Por favor, ingresa un criterio de búsqueda válido (mínimo 3 caracteres)."
+                  : "No se encontraron equipos fiscales registrados en la red AEG con esos parámetros."}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      )}
+
+      {/* Trust Context */}
+      <div className="mt-20 text-center">
+        <p className="text-sm font-medium text-slate-400 flex items-center justify-center gap-2">
+          <LockIcon size={16} /> Base de datos inmutable. Conexión directa certificada por el SENIAT.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+function SearchIcon({ size, className }: { size: number; className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
+function ArrowRight({ size, className }: { size: number; className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
+    </svg>
+  );
+}
+
+function LockIcon({ size, className }: { size: number; className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
   );
 }

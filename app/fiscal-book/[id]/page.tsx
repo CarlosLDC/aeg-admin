@@ -324,8 +324,26 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     </button>
                 </div>
 
-                <div className="flex items-center gap-3 md:w-20 lg:w-32 justify-end">
-                    {/* Balanced empty space or secondary actions could go here */}
+                <div className="flex items-center gap-3">
+                    {viewMode !== 'info' && (
+                        <button
+                            onClick={downloadPDF}
+                            disabled={isDownloading}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50"
+                        >
+                            {isDownloading ? (
+                                <div className="w-[18px] h-[18px] border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                                <>
+                                    <DownloadIcon size={18} />
+                                    <span className="text-xs font-bold uppercase tracking-wider">Descargar PDF</span>
+                                </>
+                            )}
+                        </button>
+                    )}
+                    <div className="text-muted dark:text-slate-400 text-xs font-mono font-bold bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+                        {totalPages > 0 ? `Pag ${currentPage + 1}/${totalPages}` : 'Sin Registros'}
+                    </div>
                 </div>
             </div>
 
@@ -398,32 +416,6 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     </div>
                 )}
             </div>
-
-            {/* Floating Action Button for PDF (Restores Symmetry to header) */}
-            {viewMode !== 'info' && (
-                <div className="fixed bottom-10 right-10 z-[100] no-print animate-in fade-in slide-in-from-bottom-5 duration-500">
-                    <button
-                        onClick={downloadPDF}
-                        disabled={isDownloading}
-                        className="group flex items-center gap-3 px-6 py-4 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all shadow-2xl shadow-blue-500/40 hover:scale-105 active:scale-95 disabled:opacity-50"
-                    >
-                        {isDownloading ? (
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                            <>
-                                <DownloadIcon size={20} />
-                                <span className="font-bold text-sm tracking-wide">DESCARGAR EXPEDIENTE</span>
-                            </>
-                        )}
-
-                        {/* Subtle background glow effect */}
-                        <div className="absolute inset-0 bg-blue-400/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all -z-10" />
-                    </button>
-                    <p className="mt-3 text-[10px] text-center font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm py-1 rounded-full border border-slate-100 dark:border-slate-800">
-                        Página {currentPage + 1} de {totalPages}
-                    </p>
-                </div>
-            )}
         </main>
     );
 }

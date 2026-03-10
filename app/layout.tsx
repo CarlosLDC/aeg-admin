@@ -141,7 +141,7 @@ export default function RootLayout({
                 {/* Theme Toggle */}
                 <button
                   onClick={cycleTheme}
-                  className="p-2.5 rounded-xl text-muted hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200/50 dark:border-slate-800/50 shadow-sm bg-white dark:bg-slate-900"
+                  className="p-2.5 rounded-xl text-muted hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900"
                   title={`Tema: ${theme === 'system' ? 'Sistema' : (theme === 'dark' ? 'Oscuro' : 'Claro')}`}
                 >
                   {theme === 'system' && <MonitorIcon size={18} />}

@@ -96,8 +96,10 @@ export default function RootLayout({
 
               {/* Home Link via Logo */}
               <Link href="/" className="flex items-center gap-3 group">
-                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform overflow-hidden">
-                  <img src="/logo.png" alt="AEG Logo" className="w-full h-full object-cover" />
+                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5" /><rect x="6" y="14" width="12" height="8" rx="2" />
+                  </svg>
                 </div>
                 <div>
                   <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white block leading-none">AEG</span>

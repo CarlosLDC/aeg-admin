@@ -41,7 +41,7 @@ export interface FiscalPrinter {
 export const mockPrinters: FiscalPrinter[] = [
   {
     id: 'fp-1',
-    serial: 'AEG-PRO-204192',
+    serial: 'AEG2041920',
     rif: 'J-12345678-9',
     businessName: 'Supermercados El Granero C.A.',
     address: 'Av. Francisco de Miranda, Edif. Galipán, Chacao, Caracas',
@@ -75,7 +75,7 @@ export const mockPrinters: FiscalPrinter[] = [
   },
   {
     id: '2',
-    serial: 'AEG-H0005678',
+    serial: 'AEG0005678',
     rif: 'J-98765432-1',
     businessName: 'Restaurant El Solar de los Abuelos',
     address: 'Calle 72 con Av. Bella Vista, Maracaibo, Zulia',

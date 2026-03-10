@@ -7,19 +7,30 @@
   --color-muted: var(--muted);
 }
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #f8fafc; /* slate-50 */
   --foreground: #0f172a; /* slate-900 */
   --accent: #2563eb; /* blue-600 */
   --accent-hover: #1d4ed8; 
   --muted: #64748b; /* slate-500 */
+  --border: #e2e8f0; /* slate-200 */
+}
+
+.dark {
+  --background: #020617; /* slate-950 */
+  --foreground: #f1f5f9; /* slate-100 */
+  --accent: #3b82f6; /* blue-500 */
+  --muted: #94a3b8; /* slate-400 */
+  --border: #1e293b; /* slate-800 */
 }
 
 body {
-  @apply bg-background text-foreground antialiased min-h-screen selection:bg-blue-100 selection:text-blue-900;
+  @apply bg-background text-foreground antialiased min-h-screen selection:bg-blue-500 selection:text-white transition-colors duration-300;
 }
 
 ::selection {
-  background-color: #dbeafe;
-  color: #1e3a8a;
+  background-color: #3b82f6;
+  color: white;
 }

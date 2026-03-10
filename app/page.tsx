@@ -120,6 +120,10 @@ export default function SearchPage() {
         </form>
       </div>
 
+      <p className="mt-[-2.5rem] mb-12 text-center text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-[0.2em] animate-in fade-in slide-in-from-top-2 duration-1000">
+        Deja el campo vacío para ver todos los resultados
+      </p>
+
       {/* Results Area */}
       {hasSearched && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">

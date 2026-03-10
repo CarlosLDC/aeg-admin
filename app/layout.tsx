@@ -17,21 +17,44 @@ export default function RootLayout({
 }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
   const router = useRouter();
   const pathname = usePathname();
 
-  // 1. Initial Sync (Theme & Session)
+  // 1. Theme Logic & Listeners
   useEffect(() => {
-    // Theme
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldBeDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null;
+    const initialTheme = savedTheme || 'system';
+    setTheme(initialTheme);
 
-    setIsDarkMode(shouldBeDark);
-    if (shouldBeDark) document.documentElement.classList.add('dark');
+    const applyTheme = (t: 'light' | 'dark' | 'system') => {
+      const root = document.documentElement;
+      if (t === 'system') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark) root.classList.add('dark');
+        else root.classList.remove('dark');
+      } else {
+        if (t === 'dark') root.classList.add('dark');
+        else root.classList.remove('dark');
+      }
+    };
 
-    // Initial Session
+    applyTheme(initialTheme);
+
+    // Listener for system preference changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      if (localStorage.getItem('theme') === 'system' || !localStorage.getItem('theme')) {
+        applyTheme('system');
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  // 2. Initial Session Sync
+  useEffect(() => {
     const initSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -44,7 +67,6 @@ export default function RootLayout({
     };
     initSession();
 
-    // Listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
@@ -52,7 +74,7 @@ export default function RootLayout({
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. Navigation Protection
+  // 3. Navigation Protection
   useEffect(() => {
     if (loading) return;
 
@@ -63,17 +85,24 @@ export default function RootLayout({
     }
   }, [user, loading, pathname, router]);
 
-  const toggleDarkMode = () => {
-    setIsDarkMode(prev => {
-      const next = !prev;
-      localStorage.setItem('theme', next ? 'dark' : 'light');
-      if (next) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      return next;
-    });
+  const cycleTheme = () => {
+    let nextTheme: 'light' | 'dark' | 'system';
+    if (theme === 'system') nextTheme = 'light';
+    else if (theme === 'light') nextTheme = 'dark';
+    else nextTheme = 'system';
+
+    setTheme(nextTheme);
+    localStorage.setItem('theme', nextTheme);
+
+    const root = document.documentElement;
+    if (nextTheme === 'system') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDark) root.classList.add('dark');
+      else root.classList.remove('dark');
+    } else {
+      if (nextTheme === 'dark') root.classList.add('dark');
+      else root.classList.remove('dark');
+    }
   };
 
   const handleLogout = async () => {
@@ -86,7 +115,7 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="es" className={isDarkMode ? 'dark' : ''}>
+    <html lang="es" className="transition-colors duration-300">
       <body className={`${inter.className} bg-background text-foreground`}>
         <div className="min-h-screen flex flex-col">
 
@@ -111,11 +140,13 @@ export default function RootLayout({
               <div className="flex items-center gap-4">
                 {/* Theme Toggle */}
                 <button
-                  onClick={toggleDarkMode}
-                  className="p-2 rounded-xl text-muted hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-                  title={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                  onClick={cycleTheme}
+                  className="p-2.5 rounded-xl text-muted hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200/50 dark:border-slate-800/50 shadow-sm bg-white dark:bg-slate-900"
+                  title={`Tema: ${theme === 'system' ? 'Sistema' : (theme === 'dark' ? 'Oscuro' : 'Claro')}`}
                 >
-                  {isDarkMode ? <SunIcon size={20} /> : <MoonIcon size={20} />}
+                  {theme === 'system' && <MonitorIcon size={18} />}
+                  {theme === 'light' && <SunIcon size={18} />}
+                  {theme === 'dark' && <MoonIcon size={18} />}
                 </button>
 
                 {/* User Menu / Logout */}
@@ -153,6 +184,16 @@ export default function RootLayout({
         </div>
       </body>
     </html>
+  );
+}
+
+function MonitorIcon({ size }: { size: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="20" height="14" x="2" y="3" rx="2" />
+      <line x1="8" x2="16" y1="21" y2="21" />
+      <line x1="12" x2="12" y1="17" y2="21" />
+    </svg>
   );
 }
 

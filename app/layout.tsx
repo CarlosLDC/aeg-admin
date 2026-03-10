@@ -95,14 +95,13 @@ export default function RootLayout({
             <div className="container mx-auto px-6 h-16 flex items-center justify-between">
 
               {/* Home Link via Logo */}
-              <Link href="/" className="flex items-center gap-3 group hover:opacity-80 transition-opacity cursor-pointer">
-                <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-white shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                  <span className="font-bold text-lg leading-none tracking-tighter">A</span>
+              <Link href="/" className="flex items-center gap-3 group">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform overflow-hidden">
+                  <img src="/logo.png" alt="AEG Logo" className="w-full h-full object-cover" />
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-extrabold text-xl tracking-tight text-foreground">AEG</span>
-                  <span className="text-slate-300 dark:text-slate-700 font-light">|</span>
-                  <span className="text-muted font-medium text-sm hidden sm:inline-block">Portal de Auditoría Fiscal</span>
+                <div>
+                  <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white block leading-none">AEG</span>
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Portal Administrativo</span>
                 </div>
               </Link>
 

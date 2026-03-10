@@ -35,8 +35,8 @@ export default function LoginPage() {
         <div className="flex items-center justify-center min-h-[60vh] px-4 py-12 flex-1 animate-in fade-in duration-700">
             <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-slate-100 dark:border-slate-800 p-8 md:p-10 transition-colors">
                 <div className="text-center mb-10">
-                    <div className="w-12 h-12 rounded-xl bg-accent flex items-center justify-center text-white shadow-sm shadow-blue-500/20 mx-auto mb-4">
-                        <span className="font-bold text-2xl">A</span>
+                    <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 mx-auto mb-4">
+                        <LockIcon size={24} />
                     </div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white transition-colors">Bienvenido de nuevo</h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-2 transition-colors">Ingresa tus credenciales para acceder al portal</p>
@@ -49,7 +49,6 @@ export default function LoginPage() {
                             type="email"
                             required
                             className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white placeholder:text-slate-400 font-mono"
-                            placeholder="tu@correo.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                         />
@@ -62,7 +61,6 @@ export default function LoginPage() {
                                 type={showPassword ? "text" : "password"}
                                 required
                                 className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white placeholder:text-slate-400 font-mono"
-                                placeholder="••••••••"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                             />
@@ -101,7 +99,7 @@ export default function LoginPage() {
                 </form>
 
                 <p className="mt-10 text-center text-slate-400 dark:text-slate-500 text-sm transition-colors font-light">
-                    Si no tienes acceso, contacta al administrador de red AEG.
+                    Contacta a un administrador de AEG para conseguir acceso
                 </p>
             </div>
         </div>

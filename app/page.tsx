@@ -1,18 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { FiscalPrinter } from '@/lib/mock-data';
 import { printerService } from '@/lib/printer-service';
 import Link from 'next/link';
 
 export default function SearchPage() {
+  // State
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'serial' | 'rif'>('serial');
   const [results, setResults] = useState<FiscalPrinter[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Pagination State
+  // Pagination & Scrolling
+  const resultsRef = useRef<HTMLDivElement>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const PAGE_SIZE = 5;
@@ -33,6 +35,11 @@ export default function SearchPage() {
       setResults(data);
       setTotalCount(count);
       setCurrentPage(page);
+
+      // Scroll to results top on page change
+      if (!isNewSearch && resultsRef.current) {
+        resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     } catch (error) {
       console.error("Error searching printers:", error);
     } finally {
@@ -126,7 +133,7 @@ export default function SearchPage() {
 
       {/* Results Area */}
       {hasSearched && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div ref={resultsRef} className="animate-in fade-in slide-in-from-bottom-4 duration-500 scroll-mt-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 px-2">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Resultados Centrales</h2>
             <div className="flex flex-wrap items-center gap-2">

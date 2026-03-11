@@ -136,7 +136,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.setFont('helvetica', 'normal');
                 doc.text('Modelo del Equipo:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
-                doc.text(printer.id_modelo_impresora.toUpperCase(), margin + 40, cursorY);
+                doc.text(String(printer.id_modelo_impresora || '').toUpperCase(), margin + 40, cursorY);
                 cursorY += 8;
 
                 doc.setFont('helvetica', 'normal');
@@ -148,7 +148,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.setFont('helvetica', 'normal');
                 doc.text('Estatus Técnico:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
-                doc.text(printer.estatus.toUpperCase().replace('_', ' '), margin + 45, cursorY);
+                doc.text(String(printer.estatus || '').toUpperCase().replace('_', ' '), margin + 45, cursorY);
 
                 return cursorY;
             };
@@ -463,7 +463,7 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                 <div className="grid grid-cols-2 gap-8 bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Modelo Aprobado</label>
-                        <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{printer.id_modelo_impresora?.replace('mod-', '') || 'GENERIC-AEG'}</p>
+                        <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{String(printer.id_modelo_impresora || '').replace('mod-', '') || 'GENERIC-AEG'}</p>
                     </div>
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial Fiscal</label>
@@ -495,7 +495,7 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                                         ? 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
                                         : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30'
                                 }`}>
-                                {printer.estatus.replace('_', ' ')}
+                                {String(printer.estatus || '').replace('_', ' ')}
                             </span>
                         </div>
                         <div className="text-right">

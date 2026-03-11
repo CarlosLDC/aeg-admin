@@ -14,6 +14,9 @@ export const printerService = {
   getPrinterById: async (id: string): Promise<FiscalPrinter | undefined> => {
     if (!supabase) return undefined;
 
+    // Normalize ID: Remove synthetic prefixes (legacy or prototype)
+    const cleanId = id.replace('mock-p-', '').replace('fp-', '');
+
     const { data: printer, error } = await supabase
       .from('impresoras')
       .select(`
@@ -23,7 +26,7 @@ export const printerService = {
           company:empresas (*)
         )
       `)
-      .eq('id', id)
+      .eq('id', cleanId)
       .single();
 
     if (error || !printer) {
@@ -92,10 +95,11 @@ export const printerService = {
 
 // --- Mock Generators for Hybrid View ---
 
-function generateMockReviews(seed: string): TechnicalReview[] {
+function generateMockReviews(seed: any): TechnicalReview[] {
+    const seedStr = String(seed);
     return [
         {
-            id: `tr-mock-${seed.slice(0, 4)}`,
+            id: `tr-mock-${seedStr.slice(0, 4)}`,
             date: '2024-12-10',
             serviceCenter: 'AEG Servicios Autorizados C.A.',
             centerRif: 'J-40582910-3',
@@ -111,10 +115,11 @@ function generateMockReviews(seed: string): TechnicalReview[] {
     ];
 }
 
-function generateMockInspections(seed: string): AnnualInspection[] {
+function generateMockInspections(seed: any): AnnualInspection[] {
+    const seedStr = String(seed);
     return [
         {
-            id: `ai-mock-${seed.slice(0, 4)}`,
+            id: `ai-mock-${seedStr.slice(0, 4)}`,
             date: '2025-01-20',
             serviceCenter: 'AEG Servicios Autorizados C.A.',
             centerRif: 'J-40582910-3',

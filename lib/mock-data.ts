@@ -41,6 +41,7 @@ export interface FiscalPrinter {
   // UI Fallback props (Transient)
   businessName: string | null;
   rif: string | null;
+  taxpayerType: string | null;
   address: string | null;
   technicalReviews: TechnicalReview[];
   annualInspections: AnnualInspection[];
@@ -63,6 +64,7 @@ export const mockPrinters: FiscalPrinter[] = [
     // Temp legacy props
     rif: 'J-12345678-9',
     businessName: 'Supermercados El Granero C.A.',
+    taxpayerType: 'Contribuyente Especial',
     address: 'Av. Francisco de Miranda, Edif. Galipán, Chacao, Caracas',
     technicalReviews: Array.from({ length: 25 }).map((_, i) => ({
       id: `tr-${25 - i}`,
@@ -105,6 +107,7 @@ export const mockPrinters: FiscalPrinter[] = [
     // Temp legacy props
     rif: 'J-98765432-1',
     businessName: 'Restaurant El Solar de los Abuelos',
+    taxpayerType: 'Contribuyente Ordinario',
     address: 'Calle 72 con Av. Bella Vista, Maracaibo, Zulia',
     technicalReviews: [
       {

@@ -123,6 +123,12 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 cursorY += 8;
 
                 doc.setFont('helvetica', 'normal');
+                doc.text('Tipo Contribuyente:', margin, cursorY);
+                doc.setFont('helvetica', 'bold');
+                doc.text(printer.taxpayerType || 'N/A', margin + 40, cursorY);
+                cursorY += 8;
+
+                doc.setFont('helvetica', 'normal');
                 doc.text('Dirección Fiscal:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
                 const splitAddr = doc.splitTextToSize(printer.address || 'SIN UBICACIÓN', 120);
@@ -450,6 +456,11 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <h3 className="text-xl font-black text-slate-900 dark:text-white mb-1 uppercase tracking-tight">{printer.businessName}</h3>
                     <p className="text-slate-600 dark:text-slate-400 font-mono text-sm font-bold mb-6">RIF: {printer.rif}</p>
+
+                    <div className="mb-6">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Tipo de Contribuyente</label>
+                        <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase">{printer.taxpayerType || 'N/A'}</p>
+                    </div>
 
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Domicilio Fiscal</label>

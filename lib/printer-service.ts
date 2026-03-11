@@ -23,7 +23,7 @@ export const printerService = {
         *,
         sucursal:sucursales (
           *,
-          company:empresas (*)
+          company:empresas (id, razon_social, rif, tipo_contribuyente)
         )
       `)
       .eq('id', cleanId)
@@ -39,6 +39,7 @@ export const printerService = {
         ...printer, // contains id, id_modelo_impresora, serial_fiscal, etc.
         businessName: printer.sucursal?.company?.razon_social || 'SIN ASIGNAR',
         rif: printer.sucursal?.company?.rif || 'N/A',
+        taxpayerType: printer.sucursal?.company?.tipo_contribuyente || 'N/A',
         address: printer.sucursal ? `${printer.sucursal.direccion}${printer.sucursal.ciudad ? ', ' + printer.sucursal.ciudad : ''}` : 'SIN UBICACIÓN',
         // Mock reviews and inspections for now until these tables exist
         technicalReviews: generateMockReviews(printer.id),
@@ -61,7 +62,7 @@ export const printerService = {
         *,
         sucursal:sucursales (
           *,
-          company:empresas (*)
+          company:empresas (id, razon_social, rif, tipo_contribuyente)
         )
       `, { count: 'exact' });
 
@@ -84,6 +85,7 @@ export const printerService = {
         ...p,
         businessName: p.sucursal?.company?.razon_social || 'SIN ASIGNAR',
         rif: p.sucursal?.company?.rif || 'N/A',
+        taxpayerType: p.sucursal?.company?.tipo_contribuyente || 'N/A',
         address: p.sucursal ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}` : 'SIN UBICACIÓN',
         technicalReviews: [],
         annualInspections: []

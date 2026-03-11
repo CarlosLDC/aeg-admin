@@ -27,13 +27,21 @@ export interface AnnualInspection {
 
 export interface FiscalPrinter {
   id: string;
-  businessName: string;
-  rif: string;
-  serial: string;
-  model: string;
-  registrationDate: string;
-  address: string;
-  status: 'activo' | 'inactivo';
+  id_modelo_impresora: string; 
+  id_sucursal: string | null; 
+  id_distribuidor: string | null; 
+  id_compra: string | null; 
+  id_software: string | null; 
+  id_firmware: string | null; 
+  serial_fiscal: string; 
+  estatus: 'laboratorio' | 'asignada' | 'sin_asignar' | 'enajenada'; 
+  precio_venta_final: number | null; 
+  se_pago: boolean | null; 
+
+  // UI Fallback props (Transient)
+  businessName: string | null;
+  rif: string | null;
+  address: string | null;
   technicalReviews: TechnicalReview[];
   annualInspections: AnnualInspection[];
 }
@@ -41,13 +49,21 @@ export interface FiscalPrinter {
 export const mockPrinters: FiscalPrinter[] = [
   {
     id: 'fp-1',
-    serial: 'AEG2041920',
+    serial_fiscal: 'GRA2041920',
+    id_modelo_impresora: 'mod-aeg-7000',
+    id_sucursal: 'suc-chacao-01',
+    id_distribuidor: 'dist-master-ve',
+    id_compra: 'cmp-2020-091',
+    id_software: 'sw-pos-retail-v2',
+    id_firmware: 'fw-aeg-v7.1',
+    estatus: 'asignada',
+    precio_venta_final: 850.00,
+    se_pago: true,
+
+    // Temp legacy props
     rif: 'J-12345678-9',
     businessName: 'Supermercados El Granero C.A.',
     address: 'Av. Francisco de Miranda, Edif. Galipán, Chacao, Caracas',
-    model: 'AEG-7000-PRO',
-    registrationDate: '2020-01-15',
-    status: 'activo',
     technicalReviews: Array.from({ length: 25 }).map((_, i) => ({
       id: `tr-${25 - i}`,
       date: new Date(2025 - Math.floor(i / 5), 11 - (i % 12), 15).toISOString().split('T')[0],
@@ -74,14 +90,22 @@ export const mockPrinters: FiscalPrinter[] = [
     }))
   },
   {
-    id: '2',
-    serial: 'AEG0005678',
+    id: 'fp-2',
+    serial_fiscal: 'GRA0005678',
+    id_modelo_impresora: 'mod-aeg-5000',
+    id_sucursal: 'suc-zulia-04',
+    id_distribuidor: 'dist-occidente',
+    id_compra: 'cmp-2023-142',
+    id_software: 'sw-pos-resto-v4',
+    id_firmware: 'fw-aeg-v5.3',
+    estatus: 'laboratorio',
+    precio_venta_final: 600.00,
+    se_pago: false,
+
+    // Temp legacy props
     rif: 'J-98765432-1',
     businessName: 'Restaurant El Solar de los Abuelos',
     address: 'Calle 72 con Av. Bella Vista, Maracaibo, Zulia',
-    model: 'AEG-5000-MINI',
-    registrationDate: '2023-06-20',
-    status: 'activo',
     technicalReviews: [
       {
         id: 'tr-3',

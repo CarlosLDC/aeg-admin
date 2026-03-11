@@ -9,49 +9,42 @@ import { supabase } from './supabase';
  */
 export const printerService = {
   /**
-   * Reconstructs a FiscalPrinter object using a branch ID and mock operational data.
+   * Fetches a printer by its ID from the real "impresoras" table.
    */
   getPrinterById: async (id: string): Promise<FiscalPrinter | undefined> => {
     if (!supabase) return undefined;
 
-    // Extract sucursal ID from our composite mock ID (e.g., "mock-p-[id]")
-    const sucursalId = id.startsWith('mock-p-') ? id.replace('mock-p-', '') : id;
-
-    const { data: branch, error } = await supabase
-      .from('sucursales')
+    const { data: printer, error } = await supabase
+      .from('impresoras')
       .select(`
         *,
-        company:empresas (*)
+        sucursal:sucursales (
+          *,
+          company:empresas (*)
+        )
       `)
-      .eq('id', sucursalId)
+      .eq('id', id)
       .single();
 
-    if (error || !branch) {
-      console.error('Error fetching branch for details:', error?.message);
+    if (error || !printer) {
+      console.error('Error fetching printer details:', error?.message);
       return undefined;
     }
 
-    const branchIdStr = String(branch.id);
-
-    // Return hybrid object
+    // Return mapped object
     return {
-        id: `mock-p-${branchIdStr}`,
-        businessName: branch.company?.razon_social || 'Desconocido',
-        rif: branch.company?.rif || 'Desconocido',
-        address: `${branch.direccion}${branch.ciudad ? ', ' + branch.ciudad : ''}`,
-        serial: `AEG${branchIdStr.padStart(7, '0')}`,
-        model: 'AEG-7000-PRO',
-        registrationDate: '2023-01-01',
-        status: 'activo' as 'activo' | 'inactivo',
-        // Mock reviews and inspections
-        technicalReviews: generateMockReviews(branchIdStr),
-        annualInspections: generateMockInspections(branchIdStr)
+        ...printer, // contains id, id_modelo_impresora, serial_fiscal, etc.
+        businessName: printer.sucursal?.company?.razon_social || 'SIN ASIGNAR',
+        rif: printer.sucursal?.company?.rif || 'N/A',
+        address: printer.sucursal ? `${printer.sucursal.direccion}${printer.sucursal.ciudad ? ', ' + printer.sucursal.ciudad : ''}` : 'SIN UBICACIÓN',
+        // Mock reviews and inspections for now until these tables exist
+        technicalReviews: generateMockReviews(printer.id),
+        annualInspections: generateMockInspections(printer.id)
     };
   },
 
   /**
-   * Searches for businesses/branches and returns them as "Fiscal Printers" for the UI.
-   * Supports pagination.
+   * Searches for printers in the "impresoras" table.
    */
   searchPrinters: async (query: string, page: number = 1, pageSize: number = 5): Promise<{ data: FiscalPrinter[], count: number }> => {
     if (!supabase) return { data: [], count: 0 };
@@ -60,41 +53,38 @@ export const printerService = {
     const to = from + pageSize - 1;
 
     let request = supabase
-      .from('sucursales')
+      .from('impresoras')
       .select(`
         *,
-        company:empresas (*)
+        sucursal:sucursales (
+          *,
+          company:empresas (*)
+        )
       `, { count: 'exact' });
 
     if (query) {
-        // Search in company rif, company razon_social, or branch address
-        request = request.or(`company.rif.ilike.%${query}%,company.razon_social.ilike.%${query}%,direccion.ilike.%${query}%`);
+        // Search by serial_fiscal, or related company data through sucursales
+        // Note: PostgREST allows searching across foreign tables using the table name or alias
+        request = request.or(`serial_fiscal.ilike.%${query}%,sucursales.empresas.rif.ilike.%${query}%,sucursales.empresas.razon_social.ilike.%${query}%`);
     }
 
-    const { data: branches, error, count } = await request
-        .order('id', { ascending: true }) // Stable sort for pagination
+    const { data: printers, error, count } = await request
+        .order('serial_fiscal', { ascending: true })
         .range(from, to);
 
     if (error) {
-      console.error('Error searching businesses/branches:', error.message, error.details);
+      console.error('Error searching printers:', error.message);
       return { data: [], count: 0 };
     }
 
-    const mappedData = (branches || []).map(branch => {
-        const branchIdStr = String(branch.id);
-        return {
-            id: `mock-p-${branchIdStr}`,
-            businessName: branch.company?.razon_social || 'Desconocido',
-            rif: branch.company?.rif || 'Desconocido',
-            address: `${branch.direccion}${branch.ciudad ? ', ' + branch.ciudad : ''}`,
-            serial: `AEG${branchIdStr.padStart(7, '0')}`,
-            model: 'AEG-7000-PRO',
-            registrationDate: '2023-01-01',
-            status: 'activo' as 'activo' | 'inactivo',
-            technicalReviews: [],
-            annualInspections: []
-        };
-    });
+    const mappedData = (printers || []).map(p => ({
+        ...p,
+        businessName: p.sucursal?.company?.razon_social || 'SIN ASIGNAR',
+        rif: p.sucursal?.company?.rif || 'N/A',
+        address: p.sucursal ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}` : 'SIN UBICACIÓN',
+        technicalReviews: [],
+        annualInspections: []
+    }));
 
     return { data: mappedData, count: count || 0 };
   }

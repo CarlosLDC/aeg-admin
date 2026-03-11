@@ -34,3 +34,13 @@ body {
   background-color: #3b82f6;
   color: white;
 }
+
+/* Hide scrollbar for cleanly scrolling horizontal sections */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+

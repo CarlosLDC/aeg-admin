@@ -57,10 +57,20 @@ export default function RootLayout({
   useEffect(() => {
     const initSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error("Auth session error:", error.message);
+          // If local session is corrupted or refresh token missing, forcefully sign out to clear storage
+          if (error.message.includes('Refresh Token')) {
+            await supabase.auth.signOut();
+            setUser(null);
+          }
+        } else {
+          setUser(session?.user ?? null);
+        }
       } catch (e) {
-        console.error("Auth init error:", e);
+        console.error("Auth init exception:", e);
       } finally {
         setLoading(false);
       }

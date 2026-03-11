@@ -97,7 +97,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.text('SERIAL FISCAL:', 160, cursorY, { align: 'right' });
                 doc.setFontSize(12);
                 doc.setFont('courier', 'bold');
-                doc.text(printer.serial, 160, cursorY + 6, { align: 'right' });
+                doc.text(printer.serial_fiscal, 160, cursorY + 6, { align: 'right' });
 
                 cursorY += 20;
                 doc.setLineWidth(0.5);
@@ -113,19 +113,19 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.setFont('helvetica', 'normal');
                 doc.text('Contribuyente:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
-                doc.text(printer.businessName, margin + 40, cursorY);
+                doc.text(printer.businessName || 'SIN ASIGNAR', margin + 40, cursorY);
                 cursorY += 8;
 
                 doc.setFont('helvetica', 'normal');
                 doc.text('RIF:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
-                doc.text(printer.rif, margin + 40, cursorY);
+                doc.text(printer.rif || 'N/A', margin + 40, cursorY);
                 cursorY += 8;
 
                 doc.setFont('helvetica', 'normal');
                 doc.text('Dirección Fiscal:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
-                const splitAddr = doc.splitTextToSize(printer.address, 120);
+                const splitAddr = doc.splitTextToSize(printer.address || 'SIN UBICACIÓN', 120);
                 doc.text(splitAddr, margin + 40, cursorY);
                 cursorY += splitAddr.length * 5 + 10;
 
@@ -136,13 +136,19 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.setFont('helvetica', 'normal');
                 doc.text('Modelo del Equipo:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
-                doc.text(printer.model, margin + 40, cursorY);
+                doc.text(printer.id_modelo_impresora.toUpperCase(), margin + 40, cursorY);
                 cursorY += 8;
 
                 doc.setFont('helvetica', 'normal');
-                doc.text('Fecha de Registro:', margin, cursorY);
+                doc.text('Distribuidor Autorizado:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
-                doc.text(printer.registrationDate, margin + 40, cursorY);
+                doc.text(printer.id_distribuidor || 'GRA-DIRECTO', margin + 45, cursorY);
+                cursorY += 8;
+
+                doc.setFont('helvetica', 'normal');
+                doc.text('Estatus Técnico:', margin, cursorY);
+                doc.setFont('helvetica', 'bold');
+                doc.text(printer.estatus.toUpperCase().replace('_', ' '), margin + 45, cursorY);
 
                 return cursorY;
             };
@@ -157,7 +163,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setFont('helvetica', 'bold');
             doc.text('AEG', margin, cursorY);
             doc.setFontSize(10);
-            doc.text(printer.serial, 160, cursorY, { align: 'right' });
+            doc.text(printer.serial_fiscal, 160, cursorY, { align: 'right' });
             cursorY += 10;
             doc.line(margin, cursorY, 200 - margin, cursorY);
             cursorY += 15;
@@ -179,7 +185,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setFont('helvetica', 'normal');
             doc.text('Número de Control:', margin, cursorY);
             doc.setFont('helvetica', 'bold');
-            doc.text(rec.id, margin + 45, cursorY);
+            doc.text(String(rec.id), margin + 45, cursorY);
             cursorY += 12;
 
             doc.setDrawColor(0);
@@ -235,7 +241,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setTextColor(150);
             doc.text(`Expedido dinámicamente el ${new Date().toLocaleString()} - Sistema de Auditoría AEG`, 100, 270, { align: 'center' });
 
-            doc.save(`AEG-Expediente-${printer.serial}-${rec.id}.pdf`);
+            doc.save(`AEG-Expediente-${printer.serial_fiscal}-${rec.id}.pdf`);
         } catch (error) {
             console.error("PDF Generation error:", error);
         } finally {
@@ -297,124 +303,128 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             `}</style>
 
             {/* Context Header: Actions & Toggles (HIDDEN ON PRINT) */}
-            <div className="no-print w-full max-w-[850px] mb-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-3 rounded-2xl border border-slate-200 dark:border-slate-800 transition-colors">
-                <Link href="/" className="inline-flex items-center gap-2 text-muted hover:text-foreground transition-colors pl-2">
-                    <ArrowLeft size={18} />
-                    <span className="text-sm font-medium">Volver</span>
-                </Link>
+            <div className="no-print w-full max-w-[900px] mb-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-3 rounded-2xl border border-slate-200 dark:border-slate-800 transition-colors">
 
-                <div className="flex bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur p-1 rounded-xl shadow-inner">
+                {/* Left: Back Button (Spacer 1) */}
+                <div className="flex-1 flex justify-start w-full md:w-auto">
+                    <Link href="/" className="inline-flex items-center gap-2 text-muted hover:text-foreground transition-colors pl-2">
+                        <ArrowLeft size={18} />
+                        <span className="text-sm font-medium">Volver</span>
+                    </Link>
+                </div>
+
+                {/* Center: Tabs (True Center) */}
+                <div className="flex-none flex overflow-x-auto hide-scrollbar bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur p-1 rounded-xl shadow-inner snap-x">
                     <button
                         onClick={() => handleTabChange('info')}
-                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'info' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
+                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'info' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
                     >
                         Inf. Base
                     </button>
                     <button
                         onClick={() => handleTabChange('tech')}
-                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'tech' ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-400 shadow-sm' : 'text-muted hover:text-foreground'}`}
+                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'tech' ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-400 shadow-sm' : 'text-muted hover:text-foreground'}`}
                     >
                         Servicios ({printer.technicalReviews.length})
                     </button>
                     <button
                         onClick={() => handleTabChange('inspection')}
-                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${viewMode === 'inspection' ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-400 shadow-sm' : 'text-muted hover:text-foreground'}`}
+                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'inspection' ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-400 shadow-sm' : 'text-muted hover:text-foreground'}`}
                     >
                         Inspecciones ({printer.annualInspections.length})
                     </button>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    {viewMode !== 'info' && (
-                        <button
-                            onClick={downloadPDF}
-                            disabled={isDownloading}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50"
-                        >
-                            {isDownloading ? (
-                                <div className="w-[18px] h-[18px] border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            ) : (
-                                <>
-                                    <DownloadIcon size={18} />
-                                    <span className="text-xs font-bold uppercase tracking-wider">Descargar PDF</span>
-                                </>
-                            )}
-                        </button>
-                    )}
-                    <div className="text-muted dark:text-slate-400 text-xs font-mono font-bold bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+                {/* Right: Actions (Spacer 2) */}
+                <div className="flex-1 flex items-center justify-end gap-3 w-full md:w-auto">
+                    <button
+                        onClick={downloadPDF}
+                        disabled={isDownloading || viewMode === 'info'}
+                        className="flex justify-center items-center w-10 h-10 rounded-xl transition-all duration-200 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 shadow-sm border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:pointer-events-none active:scale-95"
+                        title="Descargar PDF"
+                    >
+                        {isDownloading ? (
+                            <div className="w-[18px] h-[18px] border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                            <DownloadIcon size={20} />
+                        )}
+                    </button>
+                    <div className="text-muted dark:text-slate-400 text-xs font-mono font-bold bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 min-w-[85px] text-center">
                         {totalPages > 0 ? `Pag ${currentPage + 1}/${totalPages}` : 'Sin Registros'}
                     </div>
                 </div>
             </div>
 
             {/* Formal Record Sheet (Letter Size: 21.59cm x 27.94cm) */}
-            <div className="print-container w-full max-w-[21.59cm] min-h-[27.94cm] bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 shadow-xl border border-slate-200 dark:border-slate-800 relative flex flex-col overflow-hidden transition-colors">
+            <div className="w-full overflow-x-auto pb-6 -mx-2 px-2 md:mx-0 md:px-0">
+                <div className="print-container min-w-[800px] w-full max-w-[21.59cm] min-h-[27.94cm] bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 shadow-xl border border-slate-200 dark:border-slate-800 relative flex flex-col overflow-hidden transition-colors mx-auto">
 
-                {/* Content Area */}
-                <div className="flex-1 px-10 py-12 md:px-16 md:py-14 relative z-10 flex flex-col">
+                    {/* Content Area */}
+                    <div className="flex-1 px-10 py-12 md:px-16 md:py-14 relative z-10 flex flex-col">
 
-                    {/* Official Banner - Simplified */}
-                    <div className="flex items-start justify-between border-b border-slate-900 dark:border-slate-100 pb-6 mb-10">
-                        <div>
-                            <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
-                                Libro de Control y Reparación
-                            </h1>
-                            <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold tracking-[0.2em] uppercase mt-1">
-                                Máquina Fiscal - Providencia SENIAT 0141
-                            </p>
+                        {/* Official Banner - Simplified */}
+                        <div className="flex items-start justify-between border-b border-slate-900 dark:border-slate-100 pb-6 mb-10">
+                            <div>
+                                <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
+                                    Libro de Control y Reparación
+                                </h1>
+                                <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold tracking-[0.2em] uppercase mt-1">
+                                    Máquina Fiscal - Providencia SENIAT 0141
+                                </p>
+                            </div>
+                            <div className="text-right flex flex-col items-end border border-slate-200 dark:border-slate-800 rounded p-2 bg-slate-50 dark:bg-slate-900 transition-colors">
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Serial Fiscal</span>
+                                <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">{printer.serial_fiscal}</span>
+                            </div>
                         </div>
-                        <div className="text-right flex flex-col items-end border border-slate-200 dark:border-slate-800 rounded p-2 bg-slate-50 dark:bg-slate-900 transition-colors">
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Serial Fiscal</span>
-                            <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">{printer.serial}</span>
+
+                        {/* Conditional Rendering of 1-Record Pages */}
+                        <div className="flex-1 flex flex-col">
+                            {viewMode === 'info' && <InfoPage printer={printer} />}
+
+                            {viewMode === 'tech' && (
+                                currentRecord ? (
+                                    <SingleTechSheet review={currentRecord as TechnicalReview} printer={printer} />
+                                ) : (
+                                    <EmptyState type="services" />
+                                )
+                            )}
+
+                            {viewMode === 'inspection' && (
+                                currentRecord ? (
+                                    <SingleInspectionSheet inspection={currentRecord as AnnualInspection} printer={printer} />
+                                ) : (
+                                    <EmptyState type="inspections" />
+                                )
+                            )}
                         </div>
                     </div>
 
-                    {/* Conditional Rendering of 1-Record Pages */}
-                    <div className="flex-1 flex flex-col">
-                        {viewMode === 'info' && <InfoPage printer={printer} />}
+                    {/* Navigation Footer (HIDDEN ON PRINT) */}
+                    {viewMode !== 'info' && totalPages > 0 && (
+                        <div className="no-print mt-auto border-t border-slate-100 dark:border-slate-900 px-8 py-4 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center z-10 transition-colors">
+                            <button
+                                onClick={handlePrev}
+                                disabled={currentPage === 0}
+                                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-foreground disabled:opacity-20 transition-colors"
+                            >
+                                <ArrowLeft size={14} /> Anterior
+                            </button>
 
-                        {viewMode === 'tech' && (
-                            currentRecord ? (
-                                <SingleTechSheet review={currentRecord as TechnicalReview} printer={printer} />
-                            ) : (
-                                <EmptyState type="services" />
-                            )
-                        )}
+                            <div className="text-slate-300 dark:text-slate-700 font-mono text-[9px] uppercase tracking-widest">
+                                Hoja de Registro {currentPage + 1} de {totalPages}
+                            </div>
 
-                        {viewMode === 'inspection' && (
-                            currentRecord ? (
-                                <SingleInspectionSheet inspection={currentRecord as AnnualInspection} printer={printer} />
-                            ) : (
-                                <EmptyState type="inspections" />
-                            )
-                        )}
-                    </div>
+                            <button
+                                onClick={handleNext}
+                                disabled={currentPage === totalPages - 1}
+                                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-foreground disabled:opacity-20 transition-colors"
+                            >
+                                Siguiente <ArrowRight size={14} />
+                            </button>
+                        </div>
+                    )}
                 </div>
-
-                {/* Navigation Footer (HIDDEN ON PRINT) */}
-                {viewMode !== 'info' && totalPages > 0 && (
-                    <div className="no-print mt-auto border-t border-slate-100 dark:border-slate-900 px-8 py-4 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center z-10 transition-colors">
-                        <button
-                            onClick={handlePrev}
-                            disabled={currentPage === 0}
-                            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-foreground disabled:opacity-20 transition-colors"
-                        >
-                            <ArrowLeft size={14} /> Anterior
-                        </button>
-
-                        <div className="text-slate-300 dark:text-slate-700 font-mono text-[9px] uppercase tracking-widest">
-                            Hoja de Registro {currentPage + 1} de {totalPages}
-                        </div>
-
-                        <button
-                            onClick={handleNext}
-                            disabled={currentPage === totalPages - 1}
-                            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-foreground disabled:opacity-20 transition-colors"
-                        >
-                            Siguiente <ArrowRight size={14} />
-                        </button>
-                    </div>
-                )}
             </div>
         </main>
     );
@@ -449,19 +459,67 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
             </section>
 
             <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. ESPECIFICACIONES DEL EQUIPO</h2>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. ESPECIFICACIONES TÉCNICAS</h2>
                 <div className="grid grid-cols-2 gap-8 bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Modelo Aprobado</label>
-                        <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{printer.model}</p>
+                        <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{printer.id_modelo_impresora?.replace('mod-', '') || 'GENERIC-AEG'}</p>
                     </div>
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial Fiscal</label>
-                        <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.serial}</p>
+                        <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.serial_fiscal}</p>
                     </div>
-                    <div className="col-span-2 pt-4 border-t border-slate-200 dark:border-slate-800">
-                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Registro</label>
-                        <p className="text-slate-900 dark:text-white font-black text-sm">{printer.registrationDate}</p>
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Versión Firmware</label>
+                        <p className="font-mono text-slate-900 dark:text-white font-black text-sm">{printer.id_firmware || 'V0.0.0'}</p>
+                    </div>
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Software de Caja</label>
+                        <p className="font-mono text-slate-900 dark:text-white font-black text-sm">{printer.id_software || 'STANDALONE'}</p>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">3. DATOS ADMINISTRATIVOS Y COMERCIALES</h2>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+
+                    <div className="flex justify-between items-start mb-6">
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estatus Operativo</label>
+                            <span className={`inline-block px-3 py-1 text-xs font-bold uppercase tracking-wider rounded border ${printer.estatus === 'asignada'
+                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/30'
+                                : printer.estatus === 'laboratorio'
+                                    ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/30'
+                                    : printer.estatus === 'sin_asignar'
+                                        ? 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                        : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30'
+                                }`}>
+                                {printer.estatus.replace('_', ' ')}
+                            </span>
+                        </div>
+                        <div className="text-right">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Liquidación (USD)</label>
+                            <p className="font-mono text-slate-900 dark:text-white font-black text-lg">${printer.precio_venta_final !== null ? printer.precio_venta_final.toFixed(2) : '0.00'}</p>
+                            <span className={`text-[9px] font-bold uppercase px-2 py-0.5 mt-1 inline-block rounded ${printer.se_pago ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                {printer.se_pago ? 'Pagado' : (printer.se_pago === false ? 'Pendiente' : 'SIN REGISTRO')}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Agente / Distribuidor</label>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium text-xs uppercase">{printer.id_distribuidor || 'GRA-DIRECTO'}</p>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Sucursal Asignada</label>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium text-xs uppercase">{printer.id_sucursal || 'ALMACÉN CENTRAL'}</p>
+                        </div>
+                        <div className="col-span-2">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Cód. Orden de Compra</label>
+                            <p className="font-mono text-slate-500 dark:text-slate-400 text-xs">{printer.id_compra || 'N/A'}</p>
+                        </div>
                     </div>
                 </div>
             </section>

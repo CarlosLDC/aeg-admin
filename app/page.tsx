@@ -68,7 +68,7 @@ export default function SearchPage() {
         {/* Subtle decorative glow */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 dark:bg-blue-900/10 rounded-full blur-3xl -z-10 opacity-60 translate-x-1/2 -translate-y-1/2" />
 
-        <form onSubmit={handleSearch} className="relative z-10 flex flex-col md:flex-row gap-6 items-center">
+        <form onSubmit={handleSearch} className="relative z-10 flex flex-col md:flex-row gap-4 items-center">
 
           {/* Segmented Control */}
           <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl w-full md:w-auto h-14 border border-slate-200 dark:border-slate-800">
@@ -95,14 +95,14 @@ export default function SearchPage() {
           </div>
 
           {/* Premium Input */}
-          <div className="relative w-full group flex flex-col md:flex-row gap-4 h-14">
-            <div className="relative flex-1 h-full">
+          <div className="relative w-full group flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
               <input
                 type="text"
-                placeholder={searchType === 'serial' ? 'Ej: AEG0000123' : 'Ej: J123456789'}
+                placeholder={searchType === 'serial' ? 'Ej: GRA0000123' : 'Ej: J123456789'}
                 value={searchTerm}
                 onChange={(e) => handleSearchTermChange(e.target.value)}
-                className="w-full h-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-5 text-lg outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-300 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-slate-900 dark:text-white placeholder:text-slate-400 font-medium font-mono"
+                className="w-full h-14 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-5 text-lg outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-300 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-slate-900 dark:text-white placeholder:text-slate-400 font-medium font-mono"
               />
               <div className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors">
                 <SearchIcon size={20} />
@@ -111,7 +111,7 @@ export default function SearchPage() {
             <button
               type="submit"
               disabled={loading}
-              className="h-full px-8 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-all shadow-sm shadow-blue-500/10 active:scale-[0.95] hidden md:block min-w-[140px]"
+              className="h-14 w-full md:w-auto px-8 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-all shadow-sm shadow-blue-500/10 active:scale-[0.95] flex items-center justify-center gap-2 min-w-[140px]"
             >
               {loading ? "Buscando..." : "Auditar"}
             </button>
@@ -120,21 +120,21 @@ export default function SearchPage() {
         </form>
       </div>
 
-      <p className="mt-[-2.5rem] mb-12 text-center text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-[0.2em] animate-in fade-in slide-in-from-top-2 duration-1000">
+      <p className="mt-[-1rem] md:mt-[-2.5rem] mb-12 text-center text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-[0.2em] animate-in fade-in slide-in-from-top-2 duration-1000">
         Deja el campo vacío para ver todos los resultados
       </p>
 
       {/* Results Area */}
       {hasSearched && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex items-center justify-between mb-6 px-2">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 px-2">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Resultados Centrales</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700">
                 {totalCount} Total
               </span>
               {totalPages > 1 && (
-                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800/30">
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-900/20 px-3 py-1 rounded-full border border-blue-100 dark:border-blue-800/30 whitespace-nowrap">
                   Página {currentPage} de {totalPages}
                 </span>
               )}
@@ -153,29 +153,34 @@ export default function SearchPage() {
                     {/* Hover Accent Line */}
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
 
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-1">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-2 md:space-y-1">
                         <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {printer.businessName}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <div className="flex flex-wrap items-center gap-2 md:gap-3 text-sm">
                           <span className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-100 dark:border-slate-700">
                             RIF: {printer.rif}
                           </span>
                           <span className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-100 dark:border-slate-700">
-                            SN: {printer.serial}
+                            SN: {printer.serial_fiscal}
                           </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4">
-                        <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full border ${printer.status === 'activo'
+                      <div className="flex flex-row items-center justify-between md:justify-end w-full md:w-auto gap-4 mt-2 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">
+                        {/* Status Badge mapping for real DB values */}
+                        <span className={`px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-full border ${printer.estatus === 'asignada'
                           ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/30'
-                          : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/30'
+                          : printer.estatus === 'laboratorio'
+                            ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/30'
+                            : printer.estatus === 'sin_asignar'
+                              ? 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                              : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30'
                           }`}>
-                          {printer.status}
+                          {printer.estatus.replace('_', ' ')}
                         </span>
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:border-blue-100 dark:group-hover:border-blue-800/50 transition-all">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 group-hover:text-blue-600 dark:group-hover:text-blue-400 group-hover:border-blue-100 dark:group-hover:border-blue-800/50 transition-all shrink-0">
                           <ArrowRight size={20} />
                         </div>
                       </div>
@@ -195,7 +200,7 @@ export default function SearchPage() {
                       Anterior
                     </button>
 
-                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-2 bg-slate-100/50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
                         // Only show current, first, last, and neighbors
                         if (p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1) {

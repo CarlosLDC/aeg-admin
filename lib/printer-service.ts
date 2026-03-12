@@ -24,6 +24,9 @@ export const printerService = {
         sucursal:sucursales (
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
+        ),
+        precintos (
+          id, serial, color, estatus, created_at, fecha_instalacion, fecha_retiro
         )
       `)
       .eq('id', cleanId)
@@ -36,11 +39,12 @@ export const printerService = {
 
     // Return mapped object
     return {
-        ...printer, // contains id, id_modelo_impresora, serial_fiscal, etc.
+        ...printer,
         businessName: printer.sucursal?.company?.razon_social || 'SIN ASIGNAR',
         rif: printer.sucursal?.company?.rif || 'N/A',
         taxpayerType: printer.sucursal?.company?.tipo_contribuyente || 'N/A',
         address: printer.sucursal ? `${printer.sucursal.direccion}${printer.sucursal.ciudad ? ', ' + printer.sucursal.ciudad : ''}` : 'SIN UBICACIÓN',
+        precintos: (printer.precintos || []).map((p: any) => ({ ...p, id: String(p.id) })),
         // Mock reviews and inspections for now until these tables exist
         technicalReviews: generateMockReviews(printer.id),
         annualInspections: generateMockInspections(printer.id)
@@ -87,6 +91,7 @@ export const printerService = {
         rif: p.sucursal?.company?.rif || 'N/A',
         taxpayerType: p.sucursal?.company?.tipo_contribuyente || 'N/A',
         address: p.sucursal ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}` : 'SIN UBICACIÓN',
+        precintos: [],
         technicalReviews: [],
         annualInspections: []
     }));

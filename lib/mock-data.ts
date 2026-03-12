@@ -1,3 +1,13 @@
+export interface Precinto {
+  id: string | number;
+  serial: string;
+  color: string;
+  estatus: string;
+  created_at: string;
+  fecha_instalacion: string | null;
+  fecha_retiro: string | null;
+}
+
 export interface TechnicalReview {
   id: string;
   date: string;
@@ -43,6 +53,7 @@ export interface FiscalPrinter {
   rif: string | null;
   taxpayerType: string | null;
   address: string | null;
+  precintos: Precinto[];
   technicalReviews: TechnicalReview[];
   annualInspections: AnnualInspection[];
 }
@@ -66,6 +77,26 @@ export const mockPrinters: FiscalPrinter[] = [
     businessName: 'Supermercados El Granero C.A.',
     taxpayerType: 'Contribuyente Especial',
     address: 'Av. Francisco de Miranda, Edif. Galipán, Chacao, Caracas',
+    precintos: [
+      {
+        id: 'prec-1',
+        serial: 'PRC-2024-0101',
+        color: 'Rojo',
+        estatus: 'activo',
+        created_at: '2024-01-15T10:00:00Z',
+        fecha_instalacion: '2024-01-15T10:00:00Z',
+        fecha_retiro: null,
+      },
+      {
+        id: 'prec-2',
+        serial: 'PRC-2022-0034',
+        color: 'Azul',
+        estatus: 'retirado',
+        created_at: '2022-06-01T08:30:00Z',
+        fecha_instalacion: '2022-06-01T08:30:00Z',
+        fecha_retiro: '2024-01-15T09:50:00Z',
+      },
+    ],
     technicalReviews: Array.from({ length: 25 }).map((_, i) => ({
       id: `tr-${25 - i}`,
       date: new Date(2025 - Math.floor(i / 5), 11 - (i % 12), 15).toISOString().split('T')[0],
@@ -109,6 +140,17 @@ export const mockPrinters: FiscalPrinter[] = [
     businessName: 'Restaurant El Solar de los Abuelos',
     taxpayerType: 'Contribuyente Ordinario',
     address: 'Calle 72 con Av. Bella Vista, Maracaibo, Zulia',
+    precintos: [
+      {
+        id: 'prec-3',
+        serial: 'PRC-2023-0087',
+        color: 'Verde',
+        estatus: 'activo',
+        created_at: '2023-11-10T14:00:00Z',
+        fecha_instalacion: '2023-11-10T14:00:00Z',
+        fecha_retiro: null,
+      }
+    ],
     technicalReviews: [
       {
         id: 'tr-3',

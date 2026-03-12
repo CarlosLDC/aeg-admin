@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, use, useEffect, useRef } from 'react';
-import { FiscalPrinter, TechnicalReview, AnnualInspection } from '@/lib/mock-data';
+import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto } from '@/lib/mock-data';
 import { printerService } from '@/lib/printer-service';
 import Link from 'next/link';
 import jsPDF from 'jspdf';
@@ -21,7 +21,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
     const [loading, setLoading] = useState(true);
 
     // Core States
-    const [viewMode, setViewMode] = useState<'info' | 'tech' | 'inspection'>('info');
+    const [viewMode, setViewMode] = useState<'info' | 'tech' | 'inspection' | 'precintos'>('info');
     const [currentPage, setCurrentPage] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
@@ -55,7 +55,13 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
     }
 
     // Mathematical Navigation logic for 1 Record per Page
-    const records = viewMode === 'tech' ? printer.technicalReviews : printer.annualInspections;
+    const records = viewMode === 'tech'
+        ? printer.technicalReviews
+        : viewMode === 'inspection'
+            ? printer.annualInspections
+            : viewMode === 'precintos'
+                ? printer.precintos
+                : [];
     const totalPages = viewMode === 'info' ? 1 : records.length;
     const currentRecord = viewMode !== 'info' ? records[currentPage] : null;
 
@@ -67,12 +73,13 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
         if (currentPage > 0) setCurrentPage(p => p - 1);
     };
 
-    const handleTabChange = (mode: 'info' | 'tech' | 'inspection') => {
+    const handleTabChange = (mode: 'info' | 'tech' | 'inspection' | 'precintos') => {
         setViewMode(mode);
-        setCurrentPage(0); // Reset pagination naturally switching context
+        setCurrentPage(0);
     };
     const downloadPDF = async () => {
-        if (!printer || !currentRecord) return;
+        if (!printer) return;
+        if (viewMode !== 'info' && !currentRecord) return;
         setIsDownloading(true);
         try {
             const doc = new jsPDF({
@@ -176,78 +183,109 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
 
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(14);
-            const title = viewMode === 'tech' ? '2. RESUMEN DE ACTUACIÓN TÉCNICA' : '2. RESUMEN DE INSPECCIÓN ANUAL';
+            const title = viewMode === 'tech'
+                ? '2. RESUMEN DE ACTUACIÓN TÉCNICA'
+                : viewMode === 'inspection'
+                    ? '2. RESUMEN DE INSPECCIÓN ANUAL'
+                    : '2. REGISTRO DE PRECINTO DE SEGURIDAD';
             doc.text(title, 100, cursorY, { align: 'center' });
             cursorY += 15;
 
             const rec = currentRecord;
+            if (!rec) { doc.save(`AEG-${printer.serial_fiscal}.pdf`); return; }
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
-            doc.text('Fecha de Registro:', margin, cursorY);
-            doc.setFont('helvetica', 'bold');
-            doc.text(rec.date, margin + 45, cursorY);
-            cursorY += 8;
 
-            doc.setFont('helvetica', 'normal');
-            doc.text('Número de Control:', margin, cursorY);
-            doc.setFont('helvetica', 'bold');
-            doc.text(String(rec.id), margin + 45, cursorY);
-            cursorY += 12;
-
-            doc.setDrawColor(0);
-            const actorLabel = viewMode === 'tech' ? 'Centro de Servicio Autorizado:' : 'Inspector Actuante:';
-            doc.setFont('helvetica', 'normal');
-            doc.text(actorLabel, margin, cursorY);
-            doc.setFont('helvetica', 'bold');
-            doc.text(viewMode === 'tech' ? (rec as TechnicalReview).serviceCenter : (rec as AnnualInspection).inspector, margin + 55, cursorY);
-            cursorY += 10;
-
-            if (viewMode === 'tech') {
+            if (viewMode === 'precintos') {
+                const prec = rec as Precinto;
                 doc.setFont('helvetica', 'normal');
-                doc.text('Tipo de Intervención:', margin, cursorY);
+                doc.text('Serial del Precinto:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
-                doc.text((rec as TechnicalReview).interventionType, margin + 55, cursorY);
+                doc.text(prec.serial, margin + 45, cursorY);
                 cursorY += 8;
 
                 doc.setFont('helvetica', 'normal');
-                doc.text('Rango de Reportes Z:', margin, cursorY);
+                doc.text('Color:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
-                doc.text(`${(rec as TechnicalReview).zReportStart} - ${(rec as TechnicalReview).zReportEnd}`, margin + 55, cursorY);
-                cursorY += 12;
-            }
+                doc.text(String(prec.color).toUpperCase(), margin + 45, cursorY);
+                cursorY += 8;
 
-            // Observations Box
-            doc.rect(margin, cursorY, 200 - (margin * 2), 65);
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.text('CONTENIDO DEL ACTA / OBSERVACIONES:', margin + 3, cursorY + 6);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Estatus:', margin, cursorY);
+                doc.setFont('helvetica', 'bold');
+                doc.text(String(prec.estatus).toUpperCase(), margin + 45, cursorY);
+                cursorY += 8;
 
-            doc.setFont('courier', 'normal');
-            doc.setFontSize(9);
-            const obs = viewMode === 'tech' ? (rec as TechnicalReview).description : (rec as AnnualInspection).observations || 'EL EQUIPO CUMPLE CON TODOS LOS REQUERIMIENTOS DE LA PROVIDENCIA 0141 DEL SENIAT.';
-            const splitObs = doc.splitTextToSize(obs.toUpperCase(), 155);
-            doc.text(splitObs, margin + 5, cursorY + 16);
+                doc.setFont('helvetica', 'normal');
+                doc.text('Fecha Instalación:', margin, cursorY);
+                doc.setFont('helvetica', 'bold');
+                doc.text(prec.fecha_instalacion ? new Date(prec.fecha_instalacion).toLocaleDateString('es-VE') : 'N/A', margin + 45, cursorY);
+                cursorY += 8;
 
-            cursorY += 85;
+                if (prec.fecha_retiro) {
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Fecha Retiro:', margin, cursorY);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(new Date(prec.fecha_retiro).toLocaleDateString('es-VE'), margin + 45, cursorY);
+                    cursorY += 8;
+                }
 
-            // Signatures
-            const sigY = cursorY + 15;
-            doc.setDrawColor(150);
-            doc.line(margin, sigY, margin + 65, sigY);
-            doc.line(115, sigY, 115 + 65, sigY);
+                doc.save(`AEG-Precinto-${printer.serial_fiscal}-${prec.serial}.pdf`);
+            } else {
+                const actorLabel = viewMode === 'tech' ? 'Centro de Servicio Autorizado:' : 'Inspector Actuante:';
+                doc.setFont('helvetica', 'normal');
+                doc.text(actorLabel, margin, cursorY);
+                doc.setFont('helvetica', 'bold');
+                doc.text(viewMode === 'tech' ? (rec as TechnicalReview).serviceCenter : (rec as AnnualInspection).inspector, margin + 55, cursorY);
+                cursorY += 10;
 
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'bold');
-            doc.text('FIRMA RESPONSABLE', margin + 32.5, sigY + 5, { align: 'center' });
-            doc.text('FIRMA CONTRIBUYENTE', 147.5, sigY + 5, { align: 'center' });
+                if (viewMode === 'tech') {
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Tipo de Intervención:', margin, cursorY);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text((rec as TechnicalReview).interventionType, margin + 55, cursorY);
+                    cursorY += 8;
 
-            // Universal Footer
-            doc.setFontSize(7);
-            doc.setFont('helvetica', 'italic');
-            doc.setTextColor(150);
-            doc.text(`Expedido dinámicamente el ${new Date().toLocaleString()} - Sistema de Auditoría AEG`, 100, 270, { align: 'center' });
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Rango de Reportes Z:', margin, cursorY);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(`${(rec as TechnicalReview).zReportStart} - ${(rec as TechnicalReview).zReportEnd}`, margin + 55, cursorY);
+                    cursorY += 12;
+                }
 
-            doc.save(`AEG-Expediente-${printer.serial_fiscal}-${rec.id}.pdf`);
+                // Observations Box
+                doc.rect(margin, cursorY, 200 - (margin * 2), 65);
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'bold');
+                doc.text('CONTENIDO DEL ACTA / OBSERVACIONES:', margin + 3, cursorY + 6);
+
+                doc.setFont('courier', 'normal');
+                doc.setFontSize(9);
+                const obs = viewMode === 'tech' ? (rec as TechnicalReview).description : (rec as AnnualInspection).observations || 'EL EQUIPO CUMPLE CON TODOS LOS REQUERIMIENTOS DE LA PROVIDENCIA 0141 DEL SENIAT.';
+                const splitObs = doc.splitTextToSize(obs.toUpperCase(), 155);
+                doc.text(splitObs, margin + 5, cursorY + 16);
+
+                cursorY += 85;
+
+                // Signatures
+                const sigY = cursorY + 15;
+                doc.setDrawColor(150);
+                doc.line(margin, sigY, margin + 65, sigY);
+                doc.line(115, sigY, 115 + 65, sigY);
+
+                doc.setFontSize(8);
+                doc.setFont('helvetica', 'bold');
+                doc.text('FIRMA RESPONSABLE', margin + 32.5, sigY + 5, { align: 'center' });
+                doc.text('FIRMA CONTRIBUYENTE', 147.5, sigY + 5, { align: 'center' });
+
+                // Universal Footer
+                doc.setFontSize(7);
+                doc.setFont('helvetica', 'italic');
+                doc.setTextColor(150);
+                doc.text(`Expedido dinámicamente el ${new Date().toLocaleString()} - Sistema de Auditoría AEG`, 100, 270, { align: 'center' });
+
+                doc.save(`AEG-Expediente-${printer.serial_fiscal}-${(rec as TechnicalReview | AnnualInspection).id}.pdf`);
+            } // end else block
         } catch (error) {
             console.error("PDF Generation error:", error);
         } finally {
@@ -339,6 +377,12 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     >
                         Inspecciones ({printer.annualInspections.length})
                     </button>
+                    <button
+                        onClick={() => handleTabChange('precintos')}
+                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'precintos' ? 'bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-400 shadow-sm' : 'text-muted hover:text-foreground'}`}
+                    >
+                        Precintos ({printer.precintos.length})
+                    </button>
                 </div>
 
                 {/* Right: Actions (Spacer 2) */}
@@ -403,6 +447,14 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                                     <EmptyState type="inspections" />
                                 )
                             )}
+
+                            {viewMode === 'precintos' && (
+                                currentRecord ? (
+                                    <SinglePrecintoCoverSheet precinto={currentRecord as Precinto} printer={printer} />
+                                ) : (
+                                    <EmptyState type="precintos" />
+                                )
+                            )}
                         </div>
                     </div>
 
@@ -436,14 +488,14 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
     );
 }
 
-function EmptyState({ type }: { type: 'services' | 'inspections' }) {
+function EmptyState({ type }: { type: 'services' | 'inspections' | 'precintos' }) {
     return (
         <div className="flex flex-col items-center justify-center flex-1 py-20 text-center">
             <div className="w-12 h-12 rounded-full border border-dashed border-slate-300 dark:border-slate-700 mb-4 flex items-center justify-center">
                 <span className="text-xl grayscale opacity-30">📋</span>
             </div>
             <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Libro sin registros</h3>
-            <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">No se han encontrado {type === 'services' ? 'servicios' : 'inspecciones'}.</p>
+            <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">No se han encontrado {type === 'services' ? 'servicios' : type === 'precintos' ? 'precintos' : 'inspecciones'}.</p>
         </div>
     );
 }
@@ -683,6 +735,77 @@ function SingleInspectionSheet({ inspection, printer }: { inspection: AnnualInsp
 }
 
 // SimplifiedRecord component and its usage are removed as html2canvas is no longer used.
+
+function SinglePrecintoCoverSheet({ precinto, printer }: { precinto: Precinto, printer: FiscalPrinter }) {
+    const isActive = String(precinto.estatus).toLowerCase() === 'activo';
+    return (
+        <div className="flex flex-col h-full border border-slate-900 dark:border-slate-100 transition-colors">
+            <div className="border-b border-slate-900 dark:border-slate-100 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 flex justify-between items-center transition-colors">
+                <h2 className="font-bold tracking-widest uppercase text-[10px]">Registro de Precinto de Seguridad</h2>
+                <span className="font-mono text-[10px] opacity-70">{String(precinto.id)}</span>
+            </div>
+
+            <div className="grid grid-cols-4 divide-x divide-y divide-slate-400 dark:divide-slate-700 border-b border-slate-400 dark:border-slate-700 transition-colors">
+                <div className="p-3 col-span-3">
+                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Contribuyente</span>
+                    <span className="font-bold text-slate-900 dark:text-white text-[11px] uppercase">{printer.businessName}</span>
+                </div>
+                <div className="p-3">
+                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Serial Fiscal</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">{printer.serial_fiscal}</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-3 divide-x divide-slate-400 dark:divide-slate-700 border-b border-slate-400 dark:border-slate-700 transition-colors">
+                <div className="p-4">
+                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-2">Serial del Precinto</span>
+                    <span className="font-mono font-black text-slate-900 dark:text-white text-[12px] uppercase tracking-widest">{precinto.serial}</span>
+                </div>
+                <div className="p-4 flex items-center gap-3">
+                    <div
+                        className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-700 flex-shrink-0"
+                        style={{ backgroundColor: precinto.color.toLowerCase() }}
+                        title={precinto.color}
+                    />
+                    <div>
+                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Color</span>
+                        <span className="font-bold text-slate-900 dark:text-white text-[11px] uppercase">{precinto.color}</span>
+                    </div>
+                </div>
+                <div className="p-4">
+                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Estatus</span>
+                    <span className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded border ${isActive
+                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/30'
+                        : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30'
+                        }`}>
+                        {precinto.estatus}
+                    </span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 divide-x divide-slate-400 dark:divide-slate-700 border-b border-slate-400 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 transition-colors">
+                <div className="p-4">
+                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Fecha de Instalación</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">
+                        {precinto.fecha_instalacion ? new Date(precinto.fecha_instalacion).toLocaleDateString('es-VE') : 'N/A'}
+                    </span>
+                </div>
+                <div className="p-4">
+                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Fecha de Retiro</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">
+                        {precinto.fecha_retiro ? new Date(precinto.fecha_retiro).toLocaleDateString('es-VE') : '—'}
+                    </span>
+                </div>
+            </div>
+
+            <div className="p-5 flex-1 flex items-center justify-center">
+                <p className="text-slate-300 dark:text-slate-700 text-[10px] uppercase tracking-widest font-bold text-center">
+                    Registro de Precinto de Seguridad SENIAT Prov. 0141
+                </p>
+            </div>
+        </div>
+    );
+}
 
 function DownloadIcon({ size, className }: { size: number; className?: string }) {
     return (

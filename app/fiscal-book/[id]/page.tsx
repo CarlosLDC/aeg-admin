@@ -90,226 +90,183 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
 
             const margin = 20;
 
-            // --- PAGE 1: BASE INFORMATION ---
-            const drawBaseInfo = (cursorY: number) => {
-                doc.setFontSize(22);
+            // Helper to draw section header
+            const drawSectionHeader = (doc: jsPDF, title: string, y: number) => {
+                doc.setDrawColor(240);
+                doc.setFillColor(248, 250, 252);
+                doc.rect(margin, y - 5, 176, 7, 'F');
                 doc.setFont('helvetica', 'bold');
-                doc.text('AEG', margin, cursorY);
-
-                doc.setFontSize(8);
-                doc.setFont('helvetica', 'normal');
-                doc.text('PORTAL DE AUDITORÍA FISCAL', margin, cursorY + 5);
-                doc.setFontSize(7);
-                doc.text('Alpha Engineer Group, C.A. | RIF: J-40582910-3', margin, cursorY + 9);
-
-                doc.setFontSize(10);
-                doc.text('SERIAL FISCAL:', 160, cursorY, { align: 'right' });
-                doc.setFontSize(12);
-                doc.setFont('courier', 'bold');
-                doc.text(printer.serial_fiscal, 160, cursorY + 6, { align: 'right' });
-
-                cursorY += 20;
-                doc.setLineWidth(0.5);
-                doc.line(margin, cursorY, 200 - margin, cursorY);
-                cursorY += 15;
-
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(14);
-                doc.text('1. IDENTIFICACIÓN DEL EQUIPO Y CONTRIBUYENTE', 100, cursorY, { align: 'center' });
-                cursorY += 15;
-
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'normal');
-                doc.text('Contribuyente:', margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(printer.businessName || 'SIN ASIGNAR', margin + 40, cursorY);
-                cursorY += 8;
-
-                doc.setFont('helvetica', 'normal');
-                doc.text('RIF:', margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(printer.rif || 'N/A', margin + 40, cursorY);
-                cursorY += 8;
-
-                doc.setFont('helvetica', 'normal');
-                doc.text('Tipo Contribuyente:', margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(printer.taxpayerType || 'N/A', margin + 40, cursorY);
-                cursorY += 8;
-
-                doc.setFont('helvetica', 'normal');
-                doc.text('Dirección Fiscal:', margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                const splitAddr = doc.splitTextToSize(printer.address || 'SIN UBICACIÓN', 120);
-                doc.text(splitAddr, margin + 40, cursorY);
-                cursorY += splitAddr.length * 5 + 10;
-
-                doc.setDrawColor(230);
-                doc.line(margin, cursorY, 200 - margin, cursorY);
-                cursorY += 10;
-
-                doc.setFont('helvetica', 'normal');
-                doc.text('Modelo del Equipo:', margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                const modelStr = printer.modelo
-                    ? `${printer.modelo.marca}-${printer.modelo.codigo_modelo}`
-                    : String(printer.id_modelo_impresora || 'N/A').toUpperCase();
-                doc.text(modelStr, margin + 40, cursorY);
-                cursorY += 8;
-
-                if (printer.modelo?.providencia) {
-                    doc.setFont('helvetica', 'normal');
-                    doc.text('Providencia SENIAT:', margin, cursorY);
-                    doc.setFont('helvetica', 'bold');
-                    doc.text(printer.modelo.providencia, margin + 40, cursorY);
-                    cursorY += 8;
-                }
-
-                doc.setFont('helvetica', 'normal');
-                doc.text('Distribuidor Autorizado:', margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(printer.id_distribuidor || 'GRA-DIRECTO', margin + 45, cursorY);
-                cursorY += 8;
-
-                doc.setFont('helvetica', 'normal');
-                doc.text('Estatus Técnico:', margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(String(printer.estatus || '').toUpperCase().replace('_', ' '), margin + 45, cursorY);
-                cursorY += 8;
-
-                doc.setFont('helvetica', 'normal');
-                doc.text('Nro. Registro Fiscal:', margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(printer.registro_fiscal || 'SIN REGISTRO', margin + 45, cursorY);
-
-                return cursorY;
+                doc.setFontSize(9);
+                doc.setTextColor(30, 41, 59);
+                doc.text(title, margin + 2, y);
+                doc.setDrawColor(226, 232, 240);
+                doc.line(margin, y + 2, margin + 176, y + 2);
+                return y + 12;
             };
 
-            drawBaseInfo(20);
-
-            // --- PAGE 2: RECORD DETAILS ---
-            doc.addPage();
-            let cursorY = 20;
-
-            doc.setFontSize(22);
-            doc.setFont('helvetica', 'bold');
-            doc.text('AEG', margin, cursorY);
-            doc.setFontSize(10);
-            doc.text(printer.serial_fiscal, 160, cursorY, { align: 'right' });
-            cursorY += 10;
-            doc.line(margin, cursorY, 200 - margin, cursorY);
-            cursorY += 15;
-
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
-            const title = viewMode === 'tech'
-                ? '2. RESUMEN DE ACTUACIÓN TÉCNICA'
-                : viewMode === 'inspection'
-                    ? '2. RESUMEN DE INSPECCIÓN ANUAL'
-                    : '2. REGISTRO DE PRECINTO DE SEGURIDAD';
-            doc.text(title, 100, cursorY, { align: 'center' });
-            cursorY += 15;
-
-            const rec = currentRecord;
-            if (!rec) { doc.save(`AEG-${printer.serial_fiscal}.pdf`); return; }
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-
-            if (viewMode === 'precintos') {
-                const prec = rec as Precinto;
+            // Helper for data rows
+            const drawDataRow = (doc: jsPDF, label: string, value: string, y: number, xOffset: number = 0) => {
                 doc.setFont('helvetica', 'normal');
-                doc.text('Serial del Precinto:', margin, cursorY);
+                doc.setFontSize(8);
+                doc.setTextColor(100);
+                doc.text(label.toUpperCase(), margin + xOffset, y);
                 doc.setFont('helvetica', 'bold');
-                doc.text(prec.serial, margin + 45, cursorY);
-                cursorY += 8;
+                doc.setFontSize(10);
+                doc.setTextColor(30);
+                doc.text(String(value || 'N/A').toUpperCase(), margin + xOffset, y + 5);
+                return y + 12;
+            };
 
-                doc.setFont('helvetica', 'normal');
-                doc.text('Color:', margin, cursorY);
+            // Header Branding
+            const drawHeader = (doc: jsPDF, serial: string) => {
+                doc.setFontSize(22);
                 doc.setFont('helvetica', 'bold');
-                doc.text(String(prec.color).toUpperCase(), margin + 45, cursorY);
-                cursorY += 8;
+                doc.setTextColor(15);
+                doc.text('AEG', margin, 25);
 
-                doc.setFont('helvetica', 'normal');
-                doc.text('Estatus:', margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(String(prec.estatus).toUpperCase(), margin + 45, cursorY);
-                cursorY += 8;
+                doc.setFontSize(8);
+                doc.setTextColor(100);
+                doc.text('ALPHA ENGINEER GROUP, C.A.', margin, 30);
+                doc.setFontSize(7);
+                doc.text('RIF: J-40582910-3 | CONTROL FISCAL SENIAT 0141', margin, 34);
 
-                doc.setFont('helvetica', 'normal');
-                doc.text('Fecha Instalación:', margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(prec.fecha_instalacion ? new Date(prec.fecha_instalacion).toLocaleDateString('es-VE') : 'N/A', margin + 45, cursorY);
-                cursorY += 8;
+                doc.setFontSize(9);
+                doc.setTextColor(100);
+                doc.text('SERIAL FISCAL:', 160, 25, { align: 'right' });
+                doc.setFontSize(12);
+                doc.setFont('courier', 'bold');
+                doc.setTextColor(15);
+                doc.text(serial, 160, 31, { align: 'right' });
 
-                if (prec.fecha_retiro) {
-                    doc.setFont('helvetica', 'normal');
-                    doc.text('Fecha Retiro:', margin, cursorY);
-                    doc.setFont('helvetica', 'bold');
-                    doc.text(new Date(prec.fecha_retiro).toLocaleDateString('es-VE'), margin + 45, cursorY);
-                    cursorY += 8;
-                }
+                doc.setDrawColor(15);
+                doc.setLineWidth(0.5);
+                doc.line(margin, 40, 200 - margin, 40);
+                return 55;
+            };
 
-                doc.save(`AEG-Precinto-${printer.serial_fiscal}-${prec.serial}.pdf`);
-            } else {
-                const actorLabel = viewMode === 'tech' ? 'Centro de Servicio Autorizado:' : 'Inspector Actuante:';
-                doc.setFont('helvetica', 'normal');
-                doc.text(actorLabel, margin, cursorY);
-                doc.setFont('helvetica', 'bold');
-                doc.text(viewMode === 'tech' ? (rec as TechnicalReview).serviceCenter : (rec as AnnualInspection).inspector, margin + 55, cursorY);
-                cursorY += 10;
+            // --- PAGE 1: INFORMATION ---
+            let y = drawHeader(doc, printer.serial_fiscal);
+
+            y = drawSectionHeader(doc, '1. DATOS DEL CONTRIBUYENTE', y);
+            y = drawDataRow(doc, 'Razón Social', printer.businessName || '', y);
+            y = drawDataRow(doc, 'RIF', printer.rif || '', y);
+            y = drawDataRow(doc, 'Tipo Contribuyente', printer.taxpayerType || '', y);
+            const splitAddr = doc.splitTextToSize(printer.address || 'N/A', 140);
+            drawDataRow(doc, 'Dirección Fiscal', '', y);
+            doc.text(splitAddr, margin, y + 5);
+            y += (splitAddr.length * 5) + 10;
+
+            y = drawSectionHeader(doc, '2. ESPECIFICACIONES TÉCNICAS', y);
+            const modelStr = printer.modelo
+                ? `${printer.modelo.marca}-${printer.modelo.codigo_modelo}`
+                : String(printer.id_modelo_impresora || 'N/A').toUpperCase();
+
+            doc.text('MARCA Y MODELO', margin, y);
+            doc.text(modelStr, margin, y + 5);
+            doc.text('REGISTRO FISCAL', margin + 80, y);
+            doc.text(printer.registro_fiscal || 'SIN REGISTRO', margin + 80, y + 5);
+            y += 15;
+
+            if (printer.modelo?.providencia) {
+                doc.text('PROVIDENCIA HOMOLOGACIÓN', margin, y);
+                doc.text(printer.modelo.providencia, margin, y + 5);
+                y += 15;
+            }
+
+            // --- PAGE 2: DETAILS ---
+            if (viewMode !== 'info' && currentRecord) {
+                doc.addPage();
+                y = drawHeader(doc, printer.serial_fiscal);
 
                 if (viewMode === 'tech') {
-                    doc.setFont('helvetica', 'normal');
-                    doc.text('Tipo de Intervención:', margin, cursorY);
-                    doc.setFont('helvetica', 'bold');
-                    doc.text((rec as TechnicalReview).interventionType, margin + 55, cursorY);
-                    cursorY += 8;
+                    const tr = currentRecord as TechnicalReview;
+                    y = drawSectionHeader(doc, '1. DATOS DEL CENTRO DE SERVICIO', y);
+                    drawDataRow(doc, 'Centro Autorizado', tr.serviceCenter, y);
+                    drawDataRow(doc, 'RIF Centro', tr.centerRif, y, 90);
+                    y += 15;
+                    drawDataRow(doc, 'Técnico', tr.technician, y);
+                    drawDataRow(doc, 'ID Técnico', tr.technicianId, y, 90);
+                    y += 15;
 
-                    doc.setFont('helvetica', 'normal');
-                    doc.text('Rango de Reportes Z:', margin, cursorY);
-                    doc.setFont('helvetica', 'bold');
-                    doc.text(`${(rec as TechnicalReview).zReportStart} - ${(rec as TechnicalReview).zReportEnd}`, margin + 55, cursorY);
-                    cursorY += 12;
+                    y = drawSectionHeader(doc, '2. DETALLES DE LA INTERVENCIÓN', y);
+                    drawDataRow(doc, 'Motivo', tr.interventionType, y);
+                    drawDataRow(doc, 'Fecha', tr.date, y, 90);
+                    y += 15;
+                    drawDataRow(doc, 'Reporte Z Inicial', tr.zReportStart, y);
+                    drawDataRow(doc, 'Reporte Z Final', tr.zReportEnd, y, 90);
+                    y += 15;
+
+                    y = drawSectionHeader(doc, '3. CONTENIDO DEL ACTA', y);
+                    doc.rect(margin, y, 176, 40);
+                    const splitObs = doc.splitTextToSize((tr.description || 'N/A').toUpperCase(), 165);
+                    doc.setFont('courier', 'normal');
+                    doc.setFontSize(9);
+                    doc.text(splitObs, margin + 5, y + 10);
+                    y += 50;
+
+                    // Signatures
+                    doc.line(margin, y + 15, margin + 70, y + 15);
+                    doc.line(120, y + 15, 120 + 70, y + 15);
+                    doc.setFontSize(8);
+                    doc.text('FIRMA TÉCNICO', margin + 35, y + 20, { align: 'center' });
+                    doc.text('FIRMA CONTRIBUYENTE', 155, y + 20, { align: 'center' });
+
+                } else if (viewMode === 'inspection') {
+                    const ai = currentRecord as AnnualInspection;
+                    y = drawSectionHeader(doc, '1. DATOS DE LA INSPECCIÓN', y);
+                    drawDataRow(doc, 'Centro de Servicio', ai.serviceCenter, y);
+                    drawDataRow(doc, 'RIF Centro', ai.centerRif, y, 90);
+                    y += 15;
+                    drawDataRow(doc, 'Inspector', ai.inspector, y);
+                    drawDataRow(doc, 'Tipo', ai.tipo || 'ANUAL OBLIGATORIA', y, 90);
+                    y += 15;
+
+                    y = drawSectionHeader(doc, '2. RESULTADOS', y);
+                    drawDataRow(doc, 'Estatus', ai.status === 'passed' ? 'APROBADA' : 'OBSERVADA', y);
+                    drawDataRow(doc, 'Fecha', ai.date, y, 90);
+                    y += 15;
+
+                    doc.rect(margin, y, 176, 50);
+                    const splitObs = doc.splitTextToSize((ai.observations || 'N/A').toUpperCase(), 165);
+                    doc.setFont('courier', 'normal');
+                    doc.setFontSize(9);
+                    doc.text(splitObs, margin + 5, y + 10);
+                    y += 65;
+
+                    doc.line(margin, y + 15, margin + 70, y + 15);
+                    doc.line(120, y + 15, 120 + 70, y + 15);
+                    doc.text('FIRMA INSPECTOR', margin + 35, y + 20, { align: 'center' });
+                    doc.text('FIRMA CONTRIBUYENTE', 155, y + 20, { align: 'center' });
+
+                } else if (viewMode === 'precintos') {
+                    const pr = currentRecord as Precinto;
+                    y = drawSectionHeader(doc, '1. DATOS DEL PRECINTO', y);
+                    drawDataRow(doc, 'Serial', pr.serial, y);
+                    drawDataRow(doc, 'Color', pr.color, y, 90);
+                    y += 15;
+                    drawDataRow(doc, 'Estatus', pr.estatus, y);
+                    y += 15;
+
+                    y = drawSectionHeader(doc, '2. CRONOLOGÍA', y);
+                    drawDataRow(doc, 'Fecha Instalación', pr.fecha_instalacion || 'N/A', y);
+                    drawDataRow(doc, 'Fecha Retiro', pr.fecha_retiro || 'VIGENTE', y, 90);
+                    y += 20;
+
+                    doc.setFillColor(30, 41, 59);
+                    doc.rect(margin, y, 176, 15, 'F');
+                    doc.setTextColor(255);
+                    doc.setFontSize(10);
+                    doc.text('REGISTRO OFICIAL DE SEGURIDAD SENIAT', 100, y + 9, { align: 'center' });
                 }
+            }
 
-                // Observations Box
-                doc.rect(margin, cursorY, 200 - (margin * 2), 65);
-                doc.setFontSize(8);
-                doc.setFont('helvetica', 'bold');
-                doc.text('CONTENIDO DEL ACTA / OBSERVACIONES:', margin + 3, cursorY + 6);
+            doc.setFontSize(7);
+            doc.setTextColor(150);
+            doc.text(`Documento generado por Portal de Auditoría AEG - ${new Date().toLocaleString()}`, 100, 275, { align: 'center' });
 
-                if (viewMode === 'tech' || viewMode === 'inspection') {
-                    const timeStr = `HORARIO: ${(rec as any).startTime || '--:--'} A ${(rec as any).endTime || '--:--'}`;
-                    doc.text(timeStr, 160, cursorY + 6, { align: 'right' });
-                }
+            const filename = `AEG-${viewMode.toUpperCase()}-${printer.serial_fiscal}-${new Date().getTime()}.pdf`;
+            doc.save(filename);
 
-                doc.setFont('courier', 'normal');
-                doc.setFontSize(9);
-                const obs = viewMode === 'tech' ? (rec as TechnicalReview).description : (rec as AnnualInspection).observations || 'EL EQUIPO CUMPLE CON TODOS LOS REQUERIMIENTOS DE LA PROVIDENCIA 0141 DEL SENIAT.';
-                const splitObs = doc.splitTextToSize(obs.toUpperCase(), 155);
-                doc.text(splitObs, margin + 5, cursorY + 16);
-
-                cursorY += 85;
-
-                // Signatures
-                const sigY = cursorY + 15;
-                doc.setDrawColor(150);
-                doc.line(margin, sigY, margin + 65, sigY);
-                doc.line(115, sigY, 115 + 65, sigY);
-
-                doc.setFontSize(8);
-                doc.setFont('helvetica', 'bold');
-                doc.text('FIRMA RESPONSABLE', margin + 32.5, sigY + 5, { align: 'center' });
-                doc.text('FIRMA CONTRIBUYENTE', 147.5, sigY + 5, { align: 'center' });
-
-                // Universal Footer
-                doc.setFontSize(7);
-                doc.setFont('helvetica', 'italic');
-                doc.setTextColor(150);
-                doc.text(`Expedido dinámicamente el ${new Date().toLocaleString()} - Sistema de Auditoría AEG`, 100, 270, { align: 'center' });
-
-                doc.save(`AEG-Expediente-${printer.serial_fiscal}-${(rec as TechnicalReview | AnnualInspection).id}.pdf`);
-            } // end else block
         } catch (error) {
             console.error("PDF Generation error:", error);
         } finally {

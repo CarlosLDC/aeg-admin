@@ -100,7 +100,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.setFont('helvetica', 'normal');
                 doc.text('PORTAL DE AUDITORÍA FISCAL', margin, cursorY + 5);
                 doc.setFontSize(7);
-                doc.text('FABRICANTE: ELECTRÓNICA AEG VE, C.A. | RIF: J-40582910-3', margin, cursorY + 9);
+                doc.text('Alpha Engineer Group, C.A. | RIF: J-40582910-3', margin, cursorY + 9);
 
                 doc.setFontSize(10);
                 doc.text('SERIAL FISCAL:', 160, cursorY, { align: 'right' });
@@ -627,12 +627,12 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
             </section>
 
             <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">4. FABRICANTE O REPRESENTANTE</h2>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">4. INFORMACIÓN DE LA EMPRESA</h2>
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div className="grid grid-cols-2 gap-8">
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Nombre / Razón Social</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">ELECTRÓNICA AEG VE, C.A.</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">Alpha Engineer Group, C.A.</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF</label>

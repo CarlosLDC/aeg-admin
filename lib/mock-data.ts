@@ -10,29 +10,40 @@ export interface Precinto {
 
 export interface TechnicalReview {
   id: string;
-  date: string;
+  date: string; // = fecha_inicio
+  fechaSolicitud?: string | null;
   serviceCenter: string;
   centerRif: string;
   technician: string;
   technicianId: string;
-  interventionType: 'Mantenimiento Preventivo' | 'Mantenimiento Correctivo' | 'Cambio de Alícuota' | 'Reparación General' | 'Inicialización';
+  interventionType: 'Mantenimiento Preventivo' | 'Mantenimiento Correctivo' | 'Cambio de Alicuota' | 'Reparacion General' | 'Inicializacion';
   zReportStart: string;
   zReportEnd: string;
   sealBroken: boolean;
   sealReplaced: boolean;
-  description: string;
+  description: string; // = falla_reportada
+  observaciones?: string | null;
+  costo?: number | null;
+  urlFotos?: string[];
   partsReplaced?: string[];
+  startTime?: string | null;
+  endTime?: string | null;
 }
 
 export interface AnnualInspection {
   id: string;
-  date: string;
+  date: string; // = fecha_inicio
   serviceCenter: string;
   centerRif: string;
   inspector: string;
+  tipo?: string | null;
+  precintoViolentado?: boolean;
   status: 'passed' | 'pending';
   observations: string;
+  urlFotos?: string[];
   pdfUrl?: string;
+  startTime?: string | null;
+  endTime?: string | null;
 }
 
 export interface FiscalPrinter {
@@ -47,6 +58,7 @@ export interface FiscalPrinter {
   estatus: 'laboratorio' | 'asignada' | 'sin_asignar' | 'enajenada'; 
   precio_venta_final: number | null; 
   se_pago: boolean | null; 
+  registro_fiscal?: string | null;
 
   // UI Fallback props (Transient)
   businessName: string | null;
@@ -97,30 +109,37 @@ export const mockPrinters: FiscalPrinter[] = [
         fecha_retiro: '2024-01-15T09:50:00Z',
       },
     ],
-    technicalReviews: Array.from({ length: 25 }).map((_, i) => ({
-      id: `tr-${25 - i}`,
-      date: new Date(2025 - Math.floor(i / 5), 11 - (i % 12), 15).toISOString().split('T')[0],
+    technicalReviews: Array.from({ length: 3 }).map((_, i) => ({
+      id: `tr-${3 - i}`,
+      date: new Date(2025 - Math.floor(i / 3), 6 - i, 15).toISOString().split('T')[0],
+      fechaSolicitud: new Date(2025 - Math.floor(i / 3), 6 - i, 10).toISOString().split('T')[0],
       serviceCenter: 'AEG Servicios Autorizados C.A.',
       centerRif: 'J-40582910-3',
-      interventionType: i % 3 === 0 ? 'Mantenimiento Correctivo' : (i % 2 === 0 ? 'Mantenimiento Preventivo' : 'Reparación General'),
-      zReportStart: `000${4500 + i}`,
-      zReportEnd: `000${4501 + i}`,
-      sealBroken: i % 4 === 0,
-      sealReplaced: i % 4 === 0,
-      description: i % 3 === 0 ? 'Cambio de memoria fiscal por saturación, se reemplazó precinto.' : (i % 2 === 0 ? 'Mantenimiento preventivo anual regular.' : 'Calibración de cabezal térmico por falla de impresión.'),
+      interventionType: i % 3 === 0 ? 'Mantenimiento Correctivo' : (i % 2 === 0 ? 'Mantenimiento Preventivo' : 'Reparacion General') as TechnicalReview['interventionType'],
+      zReportStart: `${4500 + i}`,
+      zReportEnd: `${4501 + i}`,
+      sealBroken: i % 2 === 0,
+      sealReplaced: i % 2 === 0,
+      description: i % 2 === 0 ? 'Falla de impresion en cabezal termico' : 'Mantenimiento preventivo de rutina.',
+      observaciones: i % 2 === 0 ? 'Se reemplazo cabezal y precinto.' : null,
+      costo: i % 2 === 0 ? 120.00 : 50.00,
+      urlFotos: [],
       technician: i % 2 === 0 ? 'Carlos Rodríguez' : 'Luis Perez',
       technicianId: i % 2 === 0 ? 'V-15829301' : 'V-18293041',
-      partsReplaced: i % 3 === 0 ? ['Memoria Estática 2GB', 'Precinto Seguridad'] : []
+      partsReplaced: i % 2 === 0 ? ['Cabezal térmico'] : []
     })),
-    annualInspections: Array.from({ length: 12 }).map((_, i) => ({
-      id: `ai-${12 - i}`,
+    annualInspections: Array.from({ length: 2 }).map((_, i) => ({
+      id: `ai-${2 - i}`,
       date: new Date(2025 - i, 0, 20).toISOString().split('T')[0],
       serviceCenter: 'AEG Servicios Autorizados C.A.',
       centerRif: 'J-40582910-3',
       inspector: i % 2 === 0 ? 'María Gonzalez (Fiscal)' : 'José Silva (Fiscal)',
-      status: i > 0 || Math.random() > 0.1 ? 'passed' : 'pending',
-      observations: i % 4 === 0 ? 'Precinto de seguridad en perfecto estado. Equipo cumple Providencia 0141.' : 'Equipo opera conforme a la normativa vigente sin anomalías detectadas.'
-    }))
+      tipo: 'Inspeccion Anual',
+      precintoViolentado: false,
+      status: 'passed' as const,
+      observations: 'Equipo opera conforme a la normativa vigente sin anomalías detectadas.',
+      urlFotos: []
+    })),
   },
   {
     id: 'fp-2',

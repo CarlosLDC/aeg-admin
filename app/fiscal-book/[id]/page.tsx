@@ -99,6 +99,8 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.setFontSize(8);
                 doc.setFont('helvetica', 'normal');
                 doc.text('PORTAL DE AUDITORÍA FISCAL', margin, cursorY + 5);
+                doc.setFontSize(7);
+                doc.text('FABRICANTE: ELECTRÓNICA AEG VE, C.A. | RIF: J-40582910-3', margin, cursorY + 9);
 
                 doc.setFontSize(10);
                 doc.text('SERIAL FISCAL:', 160, cursorY, { align: 'right' });
@@ -162,6 +164,12 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.text('Estatus Técnico:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
                 doc.text(String(printer.estatus || '').toUpperCase().replace('_', ' '), margin + 45, cursorY);
+                cursorY += 8;
+
+                doc.setFont('helvetica', 'normal');
+                doc.text('Nro. Registro Fiscal:', margin, cursorY);
+                doc.setFont('helvetica', 'bold');
+                doc.text(printer.registro_fiscal || 'SIN REGISTRO', margin + 45, cursorY);
 
                 return cursorY;
             };
@@ -258,6 +266,11 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.setFontSize(8);
                 doc.setFont('helvetica', 'bold');
                 doc.text('CONTENIDO DEL ACTA / OBSERVACIONES:', margin + 3, cursorY + 6);
+
+                if (viewMode === 'tech' || viewMode === 'inspection') {
+                    const timeStr = `HORARIO: ${(rec as any).startTime || '--:--'} A ${(rec as any).endTime || '--:--'}`;
+                    doc.text(timeStr, 160, cursorY + 6, { align: 'right' });
+                }
 
                 doc.setFont('courier', 'normal');
                 doc.setFontSize(9);
@@ -532,6 +545,10 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial Fiscal</label>
                         <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.serial_fiscal}</p>
                     </div>
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800 col-span-2">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Número de Registro Fiscal</label>
+                        <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.registro_fiscal || 'SIN REGISTRO'}</p>
+                    </div>
                     <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Versión Firmware</label>
                         <p className="font-mono text-slate-900 dark:text-white font-black text-sm">{printer.id_firmware || 'V0.0.0'}</p>
@@ -586,6 +603,26 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                     </div>
                 </div>
             </section>
+
+            <section>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">4. FABRICANTE O REPRESENTANTE</h2>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    <div className="grid grid-cols-2 gap-8">
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Nombre / Razón Social</label>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">ELECTRÓNICA AEG VE, C.A.</p>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF</label>
+                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">J-40582910-3</p>
+                        </div>
+                        <div className="col-span-2 pt-4 border-t border-slate-200 dark:border-slate-800">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Providencia de Autorización</label>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium text-xs uppercase">SENIAT/GER/0141-2024</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 }
@@ -616,9 +653,13 @@ function SingleTechSheet({ review, printer }: { review: TechnicalReview, printer
                     <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">C.I. Técnico</span>
                     <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">{review.technicianId}</span>
                 </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-900/50">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Fecha</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">{review.date}</span>
+                <div className="p-3 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center col-span-2">
+                    <div>
+                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Fecha y Hora</span>
+                        <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">
+                            {review.date} {review.startTime && `| ${review.startTime}`} {review.endTime && `- ${review.endTime}`}
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -649,14 +690,32 @@ function SingleTechSheet({ review, printer }: { review: TechnicalReview, printer
                 </div>
             </div>
 
-            <div className="p-5 flex-1">
-                <span className="block text-[9px] uppercase font-black text-slate-900 dark:text-white mb-3">Observaciones</span>
-                <p className="text-slate-800 dark:text-slate-300 text-[11px] leading-relaxed font-mono uppercase bg-slate-50 dark:bg-slate-900/50 p-4 border border-slate-100 dark:border-slate-800 min-h-[120px] whitespace-pre-wrap transition-colors">
-                    {review.description}
-                </p>
+            <div className="p-5 flex-1 space-y-4">
+                <div>
+                    <span className="block text-[9px] uppercase font-black text-slate-900 dark:text-white mb-2">Falla Reportada</span>
+                    <p className="text-slate-800 dark:text-slate-300 text-[11px] leading-relaxed font-mono uppercase bg-slate-50 dark:bg-slate-900/50 p-4 border border-slate-100 dark:border-slate-800 min-h-[80px] whitespace-pre-wrap transition-colors">
+                        {review.description || 'N/A'}
+                    </p>
+                </div>
+
+                {review.observaciones && (
+                    <div>
+                        <span className="block text-[9px] uppercase font-black text-slate-900 dark:text-white mb-2">Observaciones Técnicas</span>
+                        <p className="text-slate-700 dark:text-slate-400 text-[11px] leading-relaxed font-mono uppercase bg-slate-50 dark:bg-slate-900/50 p-4 border border-slate-100 dark:border-slate-800 whitespace-pre-wrap transition-colors">
+                            {review.observaciones}
+                        </p>
+                    </div>
+                )}
+
+                {review.costo != null && (
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500">Costo del Servicio</span>
+                        <span className="font-mono font-black text-slate-900 dark:text-white text-[12px]">$ {Number(review.costo).toFixed(2)}</span>
+                    </div>
+                )}
 
                 {review.partsReplaced && review.partsReplaced.length > 0 && (
-                    <div className="mt-6">
+                    <div>
                         <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-2">Componentes Sustituidos</span>
                         <div className="flex gap-2 flex-wrap">
                             {review.partsReplaced.map((part) => (
@@ -707,13 +766,28 @@ function SingleInspectionSheet({ inspection, printer }: { inspection: AnnualInsp
                 </div>
                 <div className="p-3 bg-slate-50 dark:bg-slate-900/50">
                     <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Estatus</span>
-                    <span className="font-black uppercase text-[10px] dark:text-white">{inspection.status === 'passed' ? 'Aprobada' : 'Observaciones'}</span>
+                    <span className="font-black uppercase text-[10px] dark:text-white">{inspection.status === 'passed' ? 'Aprobada' : 'Con Observaciones'}</span>
                 </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-900/50">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Fecha</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">{inspection.date}</span>
+                <div className="p-3 bg-slate-50 dark:bg-slate-900/50 col-span-2">
+                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Fecha y Horario</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">
+                        {inspection.date} {inspection.startTime && `| ${inspection.startTime}`} {inspection.endTime && `- ${inspection.endTime}`}
+                    </span>
+                </div>
+                {inspection.tipo && (
+                    <div className="p-3">
+                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Tipo</span>
+                        <span className="font-bold text-slate-900 dark:text-white text-[11px] uppercase">{inspection.tipo}</span>
+                    </div>
+                )}
+                <div className="p-3">
+                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Precinto Violentado</span>
+                    <span className={`font-black uppercase text-[10px] ${inspection.precintoViolentado ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {inspection.precintoViolentado ? 'SÍ' : 'NO'}
+                    </span>
                 </div>
             </div>
+
 
             <div className="p-6 flex-1 flex flex-col transition-colors">
                 <span className="block text-[9px] uppercase font-black text-slate-900 dark:text-white mb-4">Acta de Conformidad</span>

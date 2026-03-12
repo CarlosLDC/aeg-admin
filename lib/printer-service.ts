@@ -3,18 +3,17 @@ import { supabase } from './supabase';
 
 /**
  * Service to handle printer data fetching.
- * Hybrid Mode:
- * - REAL: empresas, sucursales (from Supabase)
- * - MOCK: printers, technical_reviews, annual_inspections (dynamically generated)
+ * Fully REAL: impresoras, sucursales, empresas, precintos,
+ * servicios_tecnicos, inspecciones_anuales — all from Supabase.
  */
 export const printerService = {
   /**
-   * Fetches a printer by its ID from the real "impresoras" table.
+   * Fetches a printer by its ID from the real "impresoras" table,
+   * including full service history and annual inspections.
    */
   getPrinterById: async (id: string): Promise<FiscalPrinter | undefined> => {
     if (!supabase) return undefined;
 
-    // Normalize ID: Remove synthetic prefixes (legacy or prototype)
     const cleanId = id.replace('mock-p-', '').replace('fp-', '');
 
     const { data: printer, error } = await supabase
@@ -27,6 +26,16 @@ export const printerService = {
         ),
         precintos (
           id, serial, color, estatus, created_at, fecha_instalacion, fecha_retiro
+        ),
+        servicios_tecnicos (
+          *,
+          centro:centros_servicio (nombre, rif),
+          tecnico:tecnicos (nombre, apellido, cedula)
+        ),
+        inspecciones_anuales (
+          *,
+          centro:centros_servicio (nombre, rif),
+          empleado:empleados (nombre, apellido)
         )
       `)
       .eq('id', cleanId)
@@ -37,17 +46,56 @@ export const printerService = {
       return undefined;
     }
 
-    // Return mapped object
+    const technicalReviews: TechnicalReview[] = (printer.servicios_tecnicos || []).map((s: any) => ({
+      id: String(s.id),
+      date: s.fecha_inicio ? s.fecha_inicio.split('T')[0] : (s.created_at?.split('T')[0] || ''),
+      fechaSolicitud: s.fecha_solicitud || null,
+      serviceCenter: s.centro?.nombre || 'N/A',
+      centerRif: s.centro?.rif || 'N/A',
+      technician: s.tecnico ? `${s.tecnico.nombre} ${s.tecnico.apellido}` : 'N/A',
+      technicianId: s.tecnico?.cedula || 'N/A',
+      interventionType: s.tipo || 'Mantenimiento Preventivo',
+      zReportStart: String(s.reporte_z_inicial ?? ''),
+      zReportEnd: String(s.reporte_z_final ?? ''),
+      sealBroken: s.precinto_violentado || false,
+      sealReplaced: !!s.id_precinto_instalado,
+      description: s.falla_reportada || '',
+      observaciones: s.observaciones || null,
+      costo: s.costo ?? null,
+      urlFotos: s.url_fotos || [],
+      partsReplaced: [],
+      startTime: s.fecha_inicio ? s.fecha_inicio.split('T')[1]?.substring(0, 5) : null,
+      endTime: s.fecha_fin ? s.fecha_fin.split('T')[1]?.substring(0, 5) : null,
+    }));
+
+    const annualInspections: AnnualInspection[] = (printer.inspecciones_anuales || []).map((i: any) => ({
+      id: String(i.id),
+      date: i.fecha_inicio ? i.fecha_inicio.split('T')[0] : (i.created_at?.split('T')[0] || ''),
+      serviceCenter: i.centro?.nombre || 'N/A',
+      centerRif: i.centro?.rif || 'N/A',
+      inspector: i.empleado ? `${i.empleado.nombre} ${i.empleado.apellido}` : 'N/A',
+      tipo: i.tipo || null,
+      precintoViolentado: i.precinto_violentado || false,
+      status: (i.fecha_fin && new Date(i.fecha_fin) <= new Date()) ? 'passed' : 'pending',
+      observations: i.observaciones || '',
+      urlFotos: i.url_fotos || [],
+      pdfUrl: i.url_fotos?.[0] || undefined,
+      startTime: i.fecha_inicio ? i.fecha_inicio.split('T')[1]?.substring(0, 5) : null,
+      endTime: i.fecha_fin ? i.fecha_fin.split('T')[1]?.substring(0, 5) : null,
+    }));
+
     return {
-        ...printer,
-        businessName: printer.sucursal?.company?.razon_social || 'SIN ASIGNAR',
-        rif: printer.sucursal?.company?.rif || 'N/A',
-        taxpayerType: printer.sucursal?.company?.tipo_contribuyente || 'N/A',
-        address: printer.sucursal ? `${printer.sucursal.direccion}${printer.sucursal.ciudad ? ', ' + printer.sucursal.ciudad : ''}` : 'SIN UBICACIÓN',
-        precintos: (printer.precintos || []).map((p: any) => ({ ...p, id: String(p.id) })),
-        // Mock reviews and inspections for now until these tables exist
-        technicalReviews: generateMockReviews(printer.id),
-        annualInspections: generateMockInspections(printer.id)
+      ...printer,
+      registro_fiscal: printer.registro_fiscal || null,
+      businessName: printer.sucursal?.company?.razon_social || 'SIN ASIGNAR',
+      rif: printer.sucursal?.company?.rif || 'N/A',
+      taxpayerType: printer.sucursal?.company?.tipo_contribuyente || 'N/A',
+      address: printer.sucursal
+        ? `${printer.sucursal.direccion}${printer.sucursal.ciudad ? ', ' + printer.sucursal.ciudad : ''}`
+        : 'SIN UBICACIÓN',
+      precintos: (printer.precintos || []).map((p: any) => ({ ...p, id: String(p.id) })),
+      technicalReviews,
+      annualInspections,
     };
   },
 
@@ -71,14 +119,12 @@ export const printerService = {
       `, { count: 'exact' });
 
     if (query) {
-        // Search by serial_fiscal, or related company data through sucursales
-        // Note: PostgREST allows searching across foreign tables using the table name or alias
-        request = request.or(`serial_fiscal.ilike.%${query}%,sucursales.empresas.rif.ilike.%${query}%,sucursales.empresas.razon_social.ilike.%${query}%`);
+      request = request.or(`serial_fiscal.ilike.%${query}%,sucursales.empresas.rif.ilike.%${query}%,sucursales.empresas.razon_social.ilike.%${query}%`);
     }
 
     const { data: printers, error, count } = await request
-        .order('serial_fiscal', { ascending: true })
-        .range(from, to);
+      .order('serial_fiscal', { ascending: true })
+      .range(from, to);
 
     if (error) {
       console.error('Error searching printers:', error.message);
@@ -86,53 +132,18 @@ export const printerService = {
     }
 
     const mappedData = (printers || []).map(p => ({
-        ...p,
-        businessName: p.sucursal?.company?.razon_social || 'SIN ASIGNAR',
-        rif: p.sucursal?.company?.rif || 'N/A',
-        taxpayerType: p.sucursal?.company?.tipo_contribuyente || 'N/A',
-        address: p.sucursal ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}` : 'SIN UBICACIÓN',
-        precintos: [],
-        technicalReviews: [],
-        annualInspections: []
+      ...p,
+      businessName: p.sucursal?.company?.razon_social || 'SIN ASIGNAR',
+      rif: p.sucursal?.company?.rif || 'N/A',
+      taxpayerType: p.sucursal?.company?.tipo_contribuyente || 'N/A',
+      address: p.sucursal
+        ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}`
+        : 'SIN UBICACIÓN',
+      precintos: [],
+      technicalReviews: [],
+      annualInspections: [],
     }));
 
     return { data: mappedData, count: count || 0 };
   }
 };
-
-// --- Mock Generators for Hybrid View ---
-
-function generateMockReviews(seed: any): TechnicalReview[] {
-    const seedStr = String(seed);
-    return [
-        {
-            id: `tr-mock-${seedStr.slice(0, 4)}`,
-            date: '2024-12-10',
-            serviceCenter: 'AEG Servicios Autorizados C.A.',
-            centerRif: 'J-40582910-3',
-            technician: 'Carlos Rodríguez',
-            technicianId: 'V-15829301',
-            interventionType: 'Mantenimiento Preventivo',
-            zReportStart: '0004500',
-            zReportEnd: '0004501',
-            sealBroken: false,
-            sealReplaced: false,
-            description: 'Mantenimiento preventivo anual regular realizado con éxito.'
-        }
-    ];
-}
-
-function generateMockInspections(seed: any): AnnualInspection[] {
-    const seedStr = String(seed);
-    return [
-        {
-            id: `ai-mock-${seedStr.slice(0, 4)}`,
-            date: '2025-01-20',
-            serviceCenter: 'AEG Servicios Autorizados C.A.',
-            centerRif: 'J-40582910-3',
-            inspector: 'María Gonzalez (Fiscal)',
-            status: 'passed',
-            observations: 'Equipo opera conforme a la normativa vigente sin anomalías detectadas.'
-        }
-    ];
-}

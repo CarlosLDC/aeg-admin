@@ -29,13 +29,13 @@ export const printerService = {
         ),
         servicios_tecnicos (
           *,
-          centro:centros_servicio (nombre, rif),
-          tecnico:tecnicos (nombre, apellido, cedula)
+          centro:centros_servicio (*),
+          tecnico:tecnicos (*)
         ),
         inspecciones_anuales (
           *,
-          centro:centros_servicio (nombre, rif),
-          empleado:empleados (nombre, apellido)
+          centro:centros_servicio (*),
+          empleado:empleados (*)
         )
       `)
       .eq('id', cleanId)
@@ -50,10 +50,10 @@ export const printerService = {
       id: String(s.id),
       date: s.fecha_inicio ? s.fecha_inicio.split('T')[0] : (s.created_at?.split('T')[0] || ''),
       fechaSolicitud: s.fecha_solicitud || null,
-      serviceCenter: s.centro?.nombre || 'N/A',
-      centerRif: s.centro?.rif || 'N/A',
-      technician: s.tecnico ? `${s.tecnico.nombre} ${s.tecnico.apellido}` : 'N/A',
-      technicianId: s.tecnico?.cedula || 'N/A',
+      serviceCenter: s.centro?.nombre || s.centro?.razon_social || s.centro?.nombre_centro || 'N/A',
+      centerRif: s.centro?.rif || s.centro?.rif_centro || 'N/A',
+      technician: s.tecnico ? (`${s.tecnico.nombre || s.tecnico.first_name || ''} ${s.tecnico.apellido || s.tecnico.last_name || ''}`).trim() || 'N/A' : 'N/A',
+      technicianId: s.tecnico?.cedula || s.tecnico?.id_card || 'N/A',
       interventionType: s.tipo || 'Mantenimiento Preventivo',
       zReportStart: String(s.reporte_z_inicial ?? ''),
       zReportEnd: String(s.reporte_z_final ?? ''),
@@ -71,9 +71,9 @@ export const printerService = {
     const annualInspections: AnnualInspection[] = (printer.inspecciones_anuales || []).map((i: any) => ({
       id: String(i.id),
       date: i.fecha_inicio ? i.fecha_inicio.split('T')[0] : (i.created_at?.split('T')[0] || ''),
-      serviceCenter: i.centro?.nombre || 'N/A',
-      centerRif: i.centro?.rif || 'N/A',
-      inspector: i.empleado ? `${i.empleado.nombre} ${i.empleado.apellido}` : 'N/A',
+      serviceCenter: i.centro?.nombre || i.centro?.razon_social || i.centro?.nombre_centro || 'N/A',
+      centerRif: i.centro?.rif || i.centro?.rif_centro || 'N/A',
+      inspector: i.empleado ? (`${i.empleado.nombre || i.empleado.first_name || ''} ${i.empleado.apellido || i.empleado.last_name || ''}`).trim() || 'N/A' : 'N/A',
       tipo: i.tipo || null,
       precintoViolentado: i.precinto_violentado || false,
       status: (i.fecha_fin && new Date(i.fecha_fin) <= new Date()) ? 'passed' : 'pending',

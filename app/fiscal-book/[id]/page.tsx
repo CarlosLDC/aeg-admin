@@ -413,8 +413,8 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 <div className="flex-1 flex items-center justify-end gap-3 w-full md:w-auto">
                     <button
                         onClick={downloadPDF}
-                        disabled={isDownloading || viewMode === 'info'}
-                        className="flex justify-center items-center w-10 h-10 rounded-xl transition-all duration-200 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 shadow-sm border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:pointer-events-none active:scale-95"
+                        disabled={isDownloading || viewMode === 'info' || records.length === 0}
+                        className="flex justify-center items-center w-10 h-10 rounded-xl transition-all duration-200 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-sm border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:pointer-events-none active:scale-95"
                         title="Descargar PDF"
                     >
                         {isDownloading ? (

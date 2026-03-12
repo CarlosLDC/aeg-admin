@@ -125,7 +125,7 @@ export const printerService = {
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
-        modelos_impresora!id_modelo_impresora (id, marca, codigo_modelo, codigo, modelo)
+        modelos_impresora!id_modelo_impresora (*)
       `, { count: 'exact' });
 
     if (query) {

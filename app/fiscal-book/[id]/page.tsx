@@ -391,19 +391,19 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     </button>
                     <button
                         onClick={() => handleTabChange('tech')}
-                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'tech' ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-400 shadow-sm' : 'text-muted hover:text-foreground'}`}
+                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'tech' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
                     >
                         Servicios ({printer.technicalReviews.length})
                     </button>
                     <button
                         onClick={() => handleTabChange('inspection')}
-                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'inspection' ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-400 shadow-sm' : 'text-muted hover:text-foreground'}`}
+                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'inspection' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
                     >
                         Inspecciones ({printer.annualInspections.length})
                     </button>
                     <button
                         onClick={() => handleTabChange('precintos')}
-                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'precintos' ? 'bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-400 shadow-sm' : 'text-muted hover:text-foreground'}`}
+                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'precintos' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
                     >
                         Precintos ({printer.precintos.length})
                     </button>
@@ -918,16 +918,6 @@ function SinglePrecintoCoverSheet({ precinto, printer }: { precinto: Precinto, p
                 </div>
             </section>
 
-            <section className="flex-1 flex flex-col justify-end">
-                <div className="bg-slate-900 dark:bg-white p-6 rounded-xl text-center transition-colors">
-                    <p className="text-white dark:text-slate-900 text-[10px] uppercase tracking-[0.3em] font-black">
-                        Registro Oficial de Precinto de Seguridad SENIAT
-                    </p>
-                    <p className="text-slate-400 dark:text-slate-500 text-[8px] uppercase tracking-widest mt-1">
-                        Alpha Engineer Group, C.A. - Control Fiscal
-                    </p>
-                </div>
-            </section>
         </div>
     );
 }

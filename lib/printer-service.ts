@@ -25,6 +25,8 @@ export const printerService = {
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
         modelos_impresora!id_modelo_impresora (*),
+        modelo:modelos_impresora (*),
+        m:modelos_impresora (*),
         precintos (
           id, serial, color, estatus, created_at, fecha_instalacion, fecha_retiro
         ),
@@ -48,10 +50,10 @@ export const printerService = {
     }
 
     // --- Robust Model Data Fetching ---
-    let modelData = printer.modelos_impresora;
+    let modelData = printer.modelos_impresora || (printer as any).modelo || (printer as any).m;
     
-    // If join failed but we have an ID, try a manual fallback fetch
     if (!modelData && printer.id_modelo_impresora) {
+      console.log('DEBUG: Join failed, attempting manual fallback for ID:', printer.id_modelo_impresora);
       const { data: manualModel } = await supabase
         .from('modelos_impresora')
         .select('*')
@@ -60,7 +62,6 @@ export const printerService = {
       
       if (manualModel) {
         modelData = manualModel;
-        console.log('DEBUG: Model fetched via manual fallback for ID:', printer.id_modelo_impresora);
       }
     }
 
@@ -117,7 +118,7 @@ export const printerService = {
       modelo: m ? {
         id: m.id,
         marca: m.marca || 'AEG',
-        codigo_modelo: m.codigo_modelo || m.modelo || String(m.id)
+        codigo_modelo: m.codigo_modelo || m.codigo || m.modelo || String(m.id)
       } : null,
       precintos: (printer.precintos || []).map((p: any) => ({ ...p, id: String(p.id) })),
       technicalReviews,
@@ -142,7 +143,7 @@ export const printerService = {
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
-        modelos_impresora!id_modelo_impresora (id, marca, codigo_modelo)
+        modelos_impresora!id_modelo_impresora (id, marca, codigo_modelo, codigo, modelo)
       `, { count: 'exact' });
 
     if (query) {
@@ -167,13 +168,13 @@ export const printerService = {
         ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
       modelo: (() => {
-        const mData = (p as any).modelos_impresora;
+        const mData = (p as any).modelos_impresora || (p as any).modelo || (p as any).m;
         const m = Array.isArray(mData) ? mData[0] : mData;
         if (!m) return null;
         return {
           id: m.id,
           marca: m.marca || 'AEG',
-          codigo_modelo: m.codigo_modelo || m.modelo || String(m.id)
+          codigo_modelo: m.codigo_modelo || m.codigo || m.modelo || String(m.id)
         };
       })(),
       precintos: [],

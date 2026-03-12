@@ -94,7 +94,9 @@ export const printerService = {
       address: printer.sucursal
         ? `${printer.sucursal.direccion}${printer.sucursal.ciudad ? ', ' + printer.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
-      modelo: printer.modelo || null,
+      modelo: (Array.isArray(printer.modelo) ? printer.modelo[0] : printer.modelo) || 
+              (Array.isArray(printer.modelos_impresora) ? printer.modelos_impresora[0] : printer.modelos_impresora) || 
+              null,
       precintos: (printer.precintos || []).map((p: any) => ({ ...p, id: String(p.id) })),
       technicalReviews,
       annualInspections,
@@ -142,7 +144,9 @@ export const printerService = {
       address: p.sucursal
         ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
-      modelo: p.modelo || null,
+      modelo: (Array.isArray(p.modelo) ? p.modelo[0] : p.modelo) || 
+              (Array.isArray(p.modelos_impresora) ? p.modelos_impresora[0] : p.modelos_impresora) || 
+              null,
       precintos: [],
       technicalReviews: [],
       annualInspections: [],

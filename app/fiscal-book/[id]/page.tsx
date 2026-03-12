@@ -651,181 +651,210 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
 
 function SingleTechSheet({ review, printer }: { review: TechnicalReview, printer: FiscalPrinter }) {
     return (
-        <div className="flex flex-col h-full border border-slate-900 dark:border-slate-100 transition-colors">
-            <div className="border-b border-slate-900 dark:border-slate-100 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 flex justify-between items-center transition-colors">
-                <h2 className="font-bold tracking-widest uppercase text-[10px]">Registro de Actuación Técnica</h2>
-                <span className="font-mono text-[10px] opacity-70">{review.id.toUpperCase()}</span>
-            </div>
-
-            <div className="grid grid-cols-4 divide-x divide-y divide-slate-400 dark:divide-slate-700 border-b border-slate-400 dark:border-slate-700">
-                <div className="p-3 col-span-3">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Centro de Servicio Técnico Autorizado</span>
-                    <span className="font-bold text-slate-900 dark:text-white text-[11px] uppercase">{review.serviceCenter}</span>
+        <div className="space-y-12">
+            <section>
+                <div className="flex justify-between items-end mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">
+                    <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white">1. DATOS DEL CENTRO DE SERVICIO</h2>
+                    <span className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-tighter">ID: {review.id}</span>
                 </div>
-                <div className="p-3">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">RIF CS</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">{review.centerRif}</span>
-                </div>
-
-                <div className="p-3 col-span-2">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Técnico Autorizado</span>
-                    <span className="font-bold text-slate-900 dark:text-white text-[11px] uppercase">{review.technician}</span>
-                </div>
-                <div className="p-3">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">C.I. Técnico</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">{review.technicianId}</span>
-                </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-900/50 flex justify-between items-center col-span-2">
-                    <div>
-                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Fecha y Hora</span>
-                        <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">
-                            {review.date} {review.startTime && `| ${review.startTime}`} {review.endTime && `- ${review.endTime}`}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-3 divide-x divide-slate-400 dark:divide-slate-700 border-b border-slate-400 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 transition-colors">
-                <div className="p-4">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-2">Motivo</span>
-                    <span className="font-black text-slate-900 dark:text-white text-[10px] uppercase">{review.interventionType}</span>
-                </div>
-                <div className="p-4 grid grid-cols-2 gap-2">
-                    <div>
-                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Z Inicial</span>
-                        <span className="font-mono font-bold text-slate-900 dark:text-white text-[10px]">{review.zReportStart}</span>
-                    </div>
-                    <div>
-                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Z Final</span>
-                        <span className="font-mono font-bold text-slate-900 dark:text-white text-[10px]">{review.zReportEnd}</span>
-                    </div>
-                </div>
-                <div className="p-4 flex gap-4">
-                    <div>
-                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">P. Roto</span>
-                        <span className="font-bold text-[10px] text-foreground">{review.sealBroken ? 'SÍ' : 'NO'}</span>
-                    </div>
-                    <div>
-                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">P. Reemp</span>
-                        <span className="font-bold text-[10px] text-foreground">{review.sealReplaced ? 'SÍ' : 'NO'}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="p-5 flex-1 space-y-4">
-                <div>
-                    <span className="block text-[9px] uppercase font-black text-slate-900 dark:text-white mb-2">Falla Reportada</span>
-                    <p className="text-slate-800 dark:text-slate-300 text-[11px] leading-relaxed font-mono uppercase bg-slate-50 dark:bg-slate-900/50 p-4 border border-slate-100 dark:border-slate-800 min-h-[80px] whitespace-pre-wrap transition-colors">
-                        {review.description || 'N/A'}
-                    </p>
-                </div>
-
-                {review.observaciones && (
-                    <div>
-                        <span className="block text-[9px] uppercase font-black text-slate-900 dark:text-white mb-2">Observaciones Técnicas</span>
-                        <p className="text-slate-700 dark:text-slate-400 text-[11px] leading-relaxed font-mono uppercase bg-slate-50 dark:bg-slate-900/50 p-4 border border-slate-100 dark:border-slate-800 whitespace-pre-wrap transition-colors">
-                            {review.observaciones}
-                        </p>
-                    </div>
-                )}
-
-                {review.costo != null && (
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
-                        <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-500">Costo del Servicio</span>
-                        <span className="font-mono font-black text-slate-900 dark:text-white text-[12px]">$ {Number(review.costo).toFixed(2)}</span>
-                    </div>
-                )}
-
-                {review.partsReplaced && review.partsReplaced.length > 0 && (
-                    <div>
-                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-2">Componentes Sustituidos</span>
-                        <div className="flex gap-2 flex-wrap">
-                            {review.partsReplaced.map((part) => (
-                                <span key={part} className="px-2 py-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 font-mono text-[9px] uppercase font-bold border border-slate-200 dark:border-slate-700">
-                                    {part}
-                                </span>
-                            ))}
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    <div className="grid grid-cols-2 gap-8">
+                        <div className="col-span-2 md:col-span-1">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Centro de Servicio Técnico Autorizado</label>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm leading-tight">{review.serviceCenter}</p>
+                        </div>
+                        <div className="md:text-right">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF Centro de Servicio</label>
+                            <p className="font-mono text-slate-700 dark:text-slate-300 font-bold text-sm tracking-tight">{review.centerRif}</p>
+                        </div>
+                        <div className="col-span-2 md:col-span-1 border-t border-slate-200 dark:border-slate-800 pt-4">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Técnico Autorizado</label>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{review.technician}</p>
+                        </div>
+                        <div className="md:text-right border-t border-slate-200 dark:border-slate-800 pt-4">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">C.I. / ID Técnico</label>
+                            <p className="font-mono text-slate-700 dark:text-slate-300 font-bold text-sm">{review.technicianId}</p>
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            </section>
 
-            <div className="p-8 grid grid-cols-2 gap-12 text-center bg-slate-50 dark:bg-slate-900 items-end transition-colors">
-                <div className="border-t border-slate-300 dark:border-slate-700 pt-3">
-                    <span className="text-[8px] uppercase text-slate-400 dark:text-slate-500 font-bold block mb-1">Firma Técnico</span>
-                    <span className="font-bold text-[10px] uppercase text-slate-900 dark:text-white">{review.technician}</span>
+            <section>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. DETALLES DE LA INTERVENCIÓN</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    <div className="col-span-2">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Tipo de Intervención</label>
+                        <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{review.interventionType}</p>
+                    </div>
+                    <div className="col-span-2 md:text-right">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha y Horario</label>
+                        <p className="font-mono text-slate-900 dark:text-white font-bold text-sm">
+                            {review.date} {review.startTime && `| ${review.startTime}`} {review.endTime && `- ${review.endTime}`}
+                        </p>
+                    </div>
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Reporte Z Inicial</label>
+                        <p className="font-mono text-slate-900 dark:text-white font-black text-sm">{review.zReportStart}</p>
+                    </div>
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Reporte Z Final</label>
+                        <p className="font-mono text-slate-900 dark:text-white font-black text-sm">{review.zReportEnd}</p>
+                    </div>
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Precinto Roto</label>
+                        <p className={`font-black text-xs uppercase ${review.sealBroken ? 'text-red-500' : 'text-emerald-500'}`}>{review.sealBroken ? 'SÍ' : 'NO'}</p>
+                    </div>
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Precinto Reemplazado</label>
+                        <p className={`font-black text-xs uppercase ${review.sealReplaced ? 'text-blue-500' : 'text-slate-400'}`}>{review.sealReplaced ? 'SÍ' : 'NO'}</p>
+                    </div>
                 </div>
-                <div className="border-t border-slate-300 dark:border-slate-700 pt-3">
-                    <span className="text-[8px] uppercase text-slate-400 dark:text-slate-500 font-bold block mb-1">Firma Contribuyente</span>
-                    <span className="font-bold text-[10px] uppercase text-slate-900 dark:text-white">{printer.businessName}</span>
+            </section>
+
+            <section>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">3. CONTENIDO DEL ACTA / FALLA</h2>
+                <div className="space-y-6 bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    <div>
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-2">Falla Reportada y Acción Realizada</label>
+                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 min-h-[100px] whitespace-pre-wrap">
+                            {review.description || 'SIN DESCRIPCIÓN'}
+                        </p>
+                    </div>
+                    {review.observaciones && (
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-2">Observaciones Adicionales</label>
+                            <p className="text-slate-600 dark:text-slate-400 font-medium text-xs leading-relaxed uppercase border-l-2 border-slate-200 dark:border-slate-800 pl-4 py-1 italic">
+                                {review.observaciones}
+                            </p>
+                        </div>
+                    )}
                 </div>
-            </div>
+            </section>
+
+            <section>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">4. CIERRE Y RESPONSABILIDADES</h2>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    {review.partsReplaced && review.partsReplaced.length > 0 && (
+                        <div className="mb-8 pb-8 border-b border-slate-200 dark:border-slate-800">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-3">Componentes Sustituidos</label>
+                            <div className="flex gap-2 flex-wrap">
+                                {review.partsReplaced.map((part) => (
+                                    <span key={part} className="px-3 py-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200 font-mono text-[10px] uppercase font-black border border-slate-200 dark:border-slate-700 shadow-sm">
+                                        {part}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-12 pt-6">
+                        <div className="text-center pt-8 border-t border-slate-300 dark:border-slate-700">
+                            <span className="text-[8px] uppercase text-slate-400 dark:text-slate-500 font-bold block mb-2">Firma Técnico Autorizado</span>
+                            <span className="font-black text-[11px] uppercase text-slate-900 dark:text-white tracking-tight">{review.technician}</span>
+                        </div>
+                        <div className="text-center pt-8 border-t border-slate-300 dark:border-slate-700">
+                            <span className="text-[8px] uppercase text-slate-400 dark:text-slate-500 font-bold block mb-2">Firma del Contribuyente</span>
+                            <span className="font-black text-[11px] uppercase text-slate-900 dark:text-white tracking-tight">{printer.businessName}</span>
+                        </div>
+                    </div>
+
+                    {review.costo != null && (
+                        <div className="mt-8 flex justify-end">
+                            <div className="text-right bg-slate-100 dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <label className="text-[8px] uppercase font-bold text-slate-500 block">Liquidación</label>
+                                <p className="font-mono font-black text-slate-900 dark:text-white text-xl leading-none pt-1">
+                                    <span className="text-xs mr-1 opacity-50">$</span>
+                                    {Number(review.costo).toFixed(2)}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </section>
         </div>
     );
 }
 
 function SingleInspectionSheet({ inspection, printer }: { inspection: AnnualInspection, printer: FiscalPrinter }) {
     return (
-        <div className="flex flex-col h-full border border-slate-900 dark:border-slate-100 transition-colors">
-            <div className="border-b border-slate-900 dark:border-slate-100 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 flex justify-between items-center transition-colors">
-                <h2 className="font-bold tracking-widest uppercase text-[10px]">Inspección Anual Obligatoria</h2>
-                <span className="font-mono text-[10px] opacity-70">{inspection.id.toUpperCase()}</span>
-            </div>
-
-            <div className="grid grid-cols-4 divide-x divide-y divide-slate-400 dark:divide-slate-700 border-b border-slate-400 dark:border-slate-700 transition-colors">
-                <div className="p-3 col-span-3">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Centro de Servicio Técnico</span>
-                    <span className="font-bold text-slate-900 dark:text-white text-[11px] uppercase">{inspection.serviceCenter}</span>
+        <div className="space-y-12">
+            <section>
+                <div className="flex justify-between items-end mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">
+                    <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white">1. DATOS DEL CENTRO Y AUDITOR</h2>
+                    <span className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-tighter">ID: {inspection.id}</span>
                 </div>
-                <div className="p-3">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">RIF CS</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">{inspection.centerRif}</span>
-                </div>
-
-                <div className="p-3 col-span-2">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Inspector Actuante</span>
-                    <span className="font-bold text-slate-900 dark:text-white text-[11px] uppercase">{inspection.inspector}</span>
-                </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-900/50">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Estatus</span>
-                    <span className="font-black uppercase text-[10px] dark:text-white">{inspection.status === 'passed' ? 'Aprobada' : 'Con Observaciones'}</span>
-                </div>
-                <div className="p-3 bg-slate-50 dark:bg-slate-900/50 col-span-2">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Fecha y Horario</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">
-                        {inspection.date} {inspection.startTime && `| ${inspection.startTime}`} {inspection.endTime && `- ${inspection.endTime}`}
-                    </span>
-                </div>
-                {inspection.tipo && (
-                    <div className="p-3">
-                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Tipo</span>
-                        <span className="font-bold text-slate-900 dark:text-white text-[11px] uppercase">{inspection.tipo}</span>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    <div className="grid grid-cols-2 gap-8">
+                        <div className="col-span-2 md:col-span-1">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Centro de Servicio Técnico</label>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm leading-tight">{inspection.serviceCenter}</p>
+                        </div>
+                        <div className="md:text-right">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF Centro de Servicio</label>
+                            <p className="font-mono text-slate-700 dark:text-slate-300 font-bold text-sm tracking-tight">{inspection.centerRif}</p>
+                        </div>
+                        <div className="col-span-2 md:col-span-1 border-t border-slate-200 dark:border-slate-800 pt-4">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Inspector Actuante</label>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{inspection.inspector}</p>
+                        </div>
+                        <div className="md:text-right border-t border-slate-200 dark:border-slate-800 pt-4">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Tipo de Inspección</label>
+                            <p className="text-slate-700 dark:text-slate-300 font-bold text-xs uppercase">{inspection.tipo || 'ANUAL OBLIGATORIA'}</p>
+                        </div>
                     </div>
-                )}
-                <div className="p-3">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Precinto Violentado</span>
-                    <span className={`font-black uppercase text-[10px] ${inspection.precintoViolentado ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                        {inspection.precintoViolentado ? 'SÍ' : 'NO'}
-                    </span>
                 </div>
-            </div>
+            </section>
 
+            <section>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. RESULTADO DE LA INSPECCIÓN</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    <div className="col-span-2 md:col-span-1">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estatus Final</label>
+                        <span className={`inline-block px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded border ${inspection.status === 'passed'
+                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/30'
+                            : 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/30'
+                            }`}>
+                            {inspection.status === 'passed' ? 'APROBADA' : 'CON OBSERVACIONES'}
+                        </span>
+                    </div>
+                    <div>
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Ejecución</label>
+                        <p className="font-mono text-slate-900 dark:text-white font-bold text-sm">{inspection.date}</p>
+                    </div>
+                    <div className="md:text-right">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Horario de Auditoría</label>
+                        <p className="font-mono text-slate-900 dark:text-white font-bold text-sm">
+                            {inspection.startTime || '--:--'} A {inspection.endTime || '--:--'}
+                        </p>
+                    </div>
 
-            <div className="p-6 flex-1 flex flex-col transition-colors">
-                <span className="block text-[9px] uppercase font-black text-slate-900 dark:text-white mb-4">Acta de Conformidad</span>
-                <div className="border border-slate-100 dark:border-slate-800 p-8 bg-slate-50/50 dark:bg-slate-900/30 flex-1 relative transition-colors">
-                    <p className="text-slate-900 dark:text-slate-200 text-xs leading-relaxed font-mono uppercase">
-                        {inspection.observations || 'SIN OBSERVACIONES. EL EQUIPO CUMPLE CON TODOS LOS REQUERIMIENTOS DE LA PROVIDENCIA 0141 DEL SENIAT.'}
-                    </p>
+                    <div className="col-span-2 md:col-span-3 pt-6 border-t border-slate-200 dark:border-slate-800">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-3">Observaciones y Hallazgos</label>
+                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 min-h-[120px] whitespace-pre-wrap transition-colors shadow-sm">
+                            {inspection.observations || 'EL EQUIPO CUMPLE SATISFACTORIAMENTE CON TODOS LOS REQUERIMIENTOS TÉCNICOS Y LEGALES ESTABLECIDOS EN LA PROVIDENCIA 0141 DEL SENIAT.'}
+                        </p>
+                    </div>
                 </div>
-            </div>
+            </section>
 
-            <div className="p-8 flex justify-end bg-slate-50 dark:bg-slate-900 items-end transition-colors">
-                <div className="border-t border-slate-300 dark:border-slate-700 w-64 text-center pt-3">
-                    <span className="text-[8px] uppercase text-slate-400 dark:text-slate-500 font-bold block mb-1">Firma y Sello Inspector</span>
-                    <span className="font-bold text-[10px] uppercase text-slate-900 dark:text-white">{inspection.inspector}</span>
+            <section>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">3. CIERRE Y FIRMAS</h2>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-8 border border-slate-100 dark:border-slate-900 transition-colors">
+                    <div className="grid grid-cols-2 gap-12 pt-4">
+                        <div className="text-center pt-8 border-t border-slate-300 dark:border-slate-700">
+                            <span className="text-[8px] uppercase text-slate-400 dark:text-slate-500 font-bold block mb-2">Firma Inspector Actuante</span>
+                            <span className="font-black text-[11px] uppercase text-slate-900 dark:text-white tracking-tight">{inspection.inspector}</span>
+                        </div>
+                        <div className="text-center pt-8 border-t border-slate-300 dark:border-slate-700">
+                            <span className="text-[8px] uppercase text-slate-400 dark:text-slate-500 font-bold block mb-2">Firma del Contribuyente Beneficiario</span>
+                            <span className="font-black text-[11px] uppercase text-slate-900 dark:text-white tracking-tight">{printer.businessName}</span>
+                        </div>
+                    </div>
+                    <div className="mt-12 text-center text-slate-400 dark:text-slate-600 text-[10px] uppercase font-bold tracking-[0.2em]">
+                        Inspección Anual Obligatoria SENIAT Prov. 0141
+                    </div>
                 </div>
-            </div>
+            </section>
         </div>
     );
 }
@@ -835,70 +864,70 @@ function SingleInspectionSheet({ inspection, printer }: { inspection: AnnualInsp
 function SinglePrecintoCoverSheet({ precinto, printer }: { precinto: Precinto, printer: FiscalPrinter }) {
     const isActive = String(precinto.estatus).toLowerCase() === 'activo';
     return (
-        <div className="flex flex-col h-full border border-slate-900 dark:border-slate-100 transition-colors">
-            <div className="border-b border-slate-900 dark:border-slate-100 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 px-4 py-2 flex justify-between items-center transition-colors">
-                <h2 className="font-bold tracking-widest uppercase text-[10px]">Registro de Precinto de Seguridad</h2>
-                <span className="font-mono text-[10px] opacity-70">{String(precinto.id)}</span>
-            </div>
-
-            <div className="grid grid-cols-4 divide-x divide-y divide-slate-400 dark:divide-slate-700 border-b border-slate-400 dark:border-slate-700 transition-colors">
-                <div className="p-3 col-span-3">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Contribuyente</span>
-                    <span className="font-bold text-slate-900 dark:text-white text-[11px] uppercase">{printer.businessName}</span>
+        <div className="space-y-12">
+            <section>
+                <div className="flex justify-between items-end mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">
+                    <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white">1. IDENTIFICACIÓN DEL PRECINTO</h2>
+                    <span className="font-mono text-[10px] text-slate-400 font-bold uppercase tracking-tighter">ID: {String(precinto.id)}</span>
                 </div>
-                <div className="p-3">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-0.5">Serial Fiscal</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">{printer.serial_fiscal}</span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-3 divide-x divide-slate-400 dark:divide-slate-700 border-b border-slate-400 dark:border-slate-700 transition-colors">
-                <div className="p-4">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-2">Serial del Precinto</span>
-                    <span className="font-mono font-black text-slate-900 dark:text-white text-[12px] uppercase tracking-widest">{precinto.serial}</span>
-                </div>
-                <div className="p-4 flex items-center gap-3">
-                    <div
-                        className="w-6 h-6 rounded-full border-2 border-slate-300 dark:border-slate-700 flex-shrink-0"
-                        style={{ backgroundColor: precinto.color.toLowerCase() }}
-                        title={precinto.color}
-                    />
-                    <div>
-                        <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Color</span>
-                        <span className="font-bold text-slate-900 dark:text-white text-[11px] uppercase">{precinto.color}</span>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    <div className="grid grid-cols-2 gap-8">
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial del Precinto</label>
+                            <p className="font-mono text-slate-900 dark:text-white font-black text-lg tracking-widest">{precinto.serial}</p>
+                        </div>
+                        <div className="md:text-right">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estatus actual</label>
+                            <span className={`inline-block px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded border ${isActive
+                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/30'
+                                : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30'
+                                }`}>
+                                {precinto.estatus}
+                            </span>
+                        </div>
+                        <div className="col-span-2 pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center gap-4">
+                            <div
+                                className="w-10 h-10 rounded-full border-4 border-white dark:border-slate-800 shadow-sm flex-shrink-0"
+                                style={{ backgroundColor: precinto.color.toLowerCase() }}
+                                title={precinto.color}
+                            />
+                            <div>
+                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-0.5">Color del Precinto</label>
+                                <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{precinto.color}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div className="p-4">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Estatus</span>
-                    <span className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded border ${isActive
-                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/30'
-                        : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/30'
-                        }`}>
-                        {precinto.estatus}
-                    </span>
-                </div>
-            </div>
+            </section>
 
-            <div className="grid grid-cols-2 divide-x divide-slate-400 dark:divide-slate-700 border-b border-slate-400 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30 transition-colors">
-                <div className="p-4">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Fecha de Instalación</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">
-                        {precinto.fecha_instalacion ? new Date(precinto.fecha_instalacion).toLocaleDateString('es-VE') : 'N/A'}
-                    </span>
+            <section>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. CRONOLOGÍA DE SEGURIDAD</h2>
+                <div className="grid grid-cols-2 gap-8 bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    <div>
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Instalación</label>
+                        <p className="font-mono text-slate-900 dark:text-white font-black text-sm">
+                            {precinto.fecha_instalacion ? new Date(precinto.fecha_instalacion).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
+                        </p>
+                    </div>
+                    <div className="md:text-right">
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Retiro / Sustitución</label>
+                        <p className={`font-mono font-black text-sm ${precinto.fecha_retiro ? 'text-slate-900 dark:text-white' : 'text-slate-300 dark:text-slate-700'}`}>
+                            {precinto.fecha_retiro ? new Date(precinto.fecha_retiro).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'VIGENTE'}
+                        </p>
+                    </div>
                 </div>
-                <div className="p-4">
-                    <span className="block text-[8px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Fecha de Retiro</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">
-                        {precinto.fecha_retiro ? new Date(precinto.fecha_retiro).toLocaleDateString('es-VE') : '—'}
-                    </span>
-                </div>
-            </div>
+            </section>
 
-            <div className="p-5 flex-1 flex items-center justify-center">
-                <p className="text-slate-300 dark:text-slate-700 text-[10px] uppercase tracking-widest font-bold text-center">
-                    Registro de Precinto de Seguridad SENIAT Prov. 0141
-                </p>
-            </div>
+            <section className="flex-1 flex flex-col justify-end">
+                <div className="bg-slate-900 dark:bg-white p-6 rounded-xl text-center transition-colors">
+                    <p className="text-white dark:text-slate-900 text-[10px] uppercase tracking-[0.3em] font-black">
+                        Registro Oficial de Precinto de Seguridad SENIAT
+                    </p>
+                    <p className="text-slate-400 dark:text-slate-500 text-[8px] uppercase tracking-widest mt-1">
+                        Alpha Engineer Group, C.A. - Control Fiscal
+                    </p>
+                </div>
+            </section>
         </div>
     );
 }

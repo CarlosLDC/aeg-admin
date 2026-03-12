@@ -46,6 +46,15 @@ export interface AnnualInspection {
   endTime?: string | null;
 }
 
+export interface PrinterModel {
+  id: string | number;
+  marca: string;
+  codigo_modelo: string;
+  providencia?: string | null;
+  fecha_homologacion?: string | null;
+  precio: number;
+}
+
 export interface FiscalPrinter {
   id: string;
   id_modelo_impresora: string; 
@@ -65,6 +74,7 @@ export interface FiscalPrinter {
   rif: string | null;
   taxpayerType: string | null;
   address: string | null;
+  modelo?: PrinterModel | null; // Joined data
   precintos: Precinto[];
   technicalReviews: TechnicalReview[];
   annualInspections: AnnualInspection[];

@@ -151,8 +151,19 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.setFont('helvetica', 'normal');
                 doc.text('Modelo del Equipo:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
-                doc.text(String(printer.id_modelo_impresora || '').toUpperCase(), margin + 40, cursorY);
+                const modelStr = printer.modelo
+                    ? `${printer.modelo.marca} ${printer.modelo.codigo_modelo}`
+                    : String(printer.id_modelo_impresora || 'GENERIC-AEG').replace('mod-', '').toUpperCase();
+                doc.text(modelStr, margin + 40, cursorY);
                 cursorY += 8;
+
+                if (printer.modelo?.providencia) {
+                    doc.setFont('helvetica', 'normal');
+                    doc.text('Providencia SENIAT:', margin, cursorY);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(printer.modelo.providencia, margin + 40, cursorY);
+                    cursorY += 8;
+                }
 
                 doc.setFont('helvetica', 'normal');
                 doc.text('Distribuidor Autorizado:', margin, cursorY);
@@ -538,8 +549,10 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                 <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. ESPECIFICACIONES TÉCNICAS</h2>
                 <div className="grid grid-cols-2 gap-8 bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div>
-                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Modelo Aprobado</label>
-                        <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{String(printer.id_modelo_impresora || '').replace('mod-', '') || 'GENERIC-AEG'}</p>
+                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Marca y Modelo</label>
+                        <p className="text-slate-900 dark:text-white font-black uppercase text-sm">
+                            {printer.modelo ? `${printer.modelo.marca} ${printer.modelo.codigo_modelo}` : (String(printer.id_modelo_impresora || '').replace('mod-', '') || 'GENERIC-AEG')}
+                        </p>
                     </div>
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial Fiscal</label>
@@ -557,6 +570,15 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Software de Caja</label>
                         <p className="font-mono text-slate-900 dark:text-white font-black text-sm">{printer.id_software || 'STANDALONE'}</p>
                     </div>
+                    {printer.modelo?.providencia && (
+                        <div className="pt-4 border-t border-slate-200 dark:border-slate-800 col-span-2">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Providencia de Homologación</label>
+                            <p className="text-slate-700 dark:text-slate-300 font-bold text-xs uppercase">
+                                {printer.modelo.providencia}
+                                {printer.modelo.fecha_homologacion && ` (${new Date(printer.modelo.fecha_homologacion).toLocaleDateString('es-VE')})`}
+                            </p>
+                        </div>
+                    )}
                 </div>
             </section>
 

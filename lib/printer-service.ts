@@ -24,7 +24,7 @@ export const printerService = {
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
-        modelos_impresora!id_modelo_impresora (*),
+        modelos_info:modelos_impresora (*),
         precintos (
           id, serial, color, estatus, created_at, fecha_instalacion, fecha_retiro
         ),
@@ -46,6 +46,9 @@ export const printerService = {
       console.error('Error fetching printer details:', error?.message);
       return undefined;
     }
+
+    console.log('DEBUG: RAW PRINTER FROM DB:', JSON.stringify(printer, null, 2));
+    console.log('DEBUG: MODELS JOIN RESULT:', (printer as any).modelos_impresora || (printer as any).modelo);
 
     const technicalReviews: TechnicalReview[] = (printer.servicios_tecnicos || []).map((s: any) => ({
       id: String(s.id),
@@ -95,12 +98,12 @@ export const printerService = {
         ? `${printer.sucursal.direccion}${printer.sucursal.ciudad ? ', ' + printer.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
       modelo: (() => {
-        const mData = (printer as any).modelos_impresora || (printer as any).modelo_data;
+        const mData = (printer as any).modelos_info;
         const m = Array.isArray(mData) ? mData[0] : mData;
         if (!m) return null;
         return {
           id: m.id,
-          marca: m.marca,
+          marca: m.marca || 'AEG',
           codigo_modelo: m.codigo_modelo || m.modelo || String(m.id)
         };
       })(),
@@ -127,7 +130,7 @@ export const printerService = {
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
-        modelos_impresora!id_modelo_impresora (id, marca, codigo_modelo)
+        modelos_info:modelos_impresora (id, marca, codigo_modelo)
       `, { count: 'exact' });
 
     if (query) {
@@ -152,12 +155,12 @@ export const printerService = {
         ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
       modelo: (() => {
-        const mData = (p as any).modelos_impresora || (p as any).modelo_data;
+        const mData = (p as any).modelos_info;
         const m = Array.isArray(mData) ? mData[0] : mData;
         if (!m) return null;
         return {
           id: m.id,
-          marca: m.marca,
+          marca: m.marca || 'AEG',
           codigo_modelo: m.codigo_modelo || m.modelo || String(m.id)
         };
       })(),

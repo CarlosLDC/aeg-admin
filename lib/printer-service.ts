@@ -24,7 +24,7 @@ export const printerService = {
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
-        modelo_data:modelos_impresora (*),
+        modelos_impresora!id_modelo_impresora (*),
         precintos (
           id, serial, color, estatus, created_at, fecha_instalacion, fecha_retiro
         ),
@@ -95,13 +95,13 @@ export const printerService = {
         ? `${printer.sucursal.direccion}${printer.sucursal.ciudad ? ', ' + printer.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
       modelo: (() => {
-        const m = (Array.isArray(printer.modelo_data) ? printer.modelo_data[0] : printer.modelo_data) || 
-                  (Array.isArray(printer.modelos_impresora) ? printer.modelos_impresora[0] : printer.modelos_impresora);
+        const mData = (printer as any).modelos_impresora || (printer as any).modelo_data;
+        const m = Array.isArray(mData) ? mData[0] : mData;
         if (!m) return null;
         return {
           id: m.id,
           marca: m.marca,
-          codigo_modelo: m.codigo_modelo || m.modelo // Fallback if they renamed it
+          codigo_modelo: m.codigo_modelo || m.modelo || String(m.id)
         };
       })(),
       precintos: (printer.precintos || []).map((p: any) => ({ ...p, id: String(p.id) })),
@@ -127,7 +127,7 @@ export const printerService = {
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
-        modelo_data:modelos_impresora (id, marca, codigo_modelo)
+        modelos_impresora!id_modelo_impresora (id, marca, codigo_modelo)
       `, { count: 'exact' });
 
     if (query) {
@@ -152,13 +152,13 @@ export const printerService = {
         ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
       modelo: (() => {
-        const m = (Array.isArray(p.modelo_data) ? p.modelo_data[0] : p.modelo_data) || 
-                  (Array.isArray(p.modelos_impresora) ? p.modelos_impresora[0] : p.modelos_impresora);
+        const mData = (p as any).modelos_impresora || (p as any).modelo_data;
+        const m = Array.isArray(mData) ? mData[0] : mData;
         if (!m) return null;
         return {
           id: m.id,
           marca: m.marca,
-          codigo_modelo: m.codigo_modelo || m.modelo
+          codigo_modelo: m.codigo_modelo || m.modelo || String(m.id)
         };
       })(),
       precintos: [],

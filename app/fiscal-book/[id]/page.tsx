@@ -152,7 +152,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.text('Modelo del Equipo:', margin, cursorY);
                 doc.setFont('helvetica', 'bold');
                 const modelStr = printer.modelo
-                    ? `${printer.modelo.marca} ${printer.modelo.codigo_modelo}`
+                    ? `${printer.modelo.marca}-${printer.modelo.codigo_modelo}`
                     : String(printer.id_modelo_impresora || 'GENERIC-AEG').replace('mod-', '').toUpperCase();
                 doc.text(modelStr, margin + 40, cursorY);
                 cursorY += 8;
@@ -551,7 +551,7 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Marca y Modelo</label>
                         <p className="text-slate-900 dark:text-white font-black uppercase text-sm">
-                            {printer.modelo ? `${printer.modelo.marca} ${printer.modelo.codigo_modelo}` : (String(printer.id_modelo_impresora || '').replace('mod-', '') || 'GENERIC-AEG')}
+                            {printer.modelo ? `${printer.modelo.marca}-${printer.modelo.codigo_modelo}` : (String(printer.id_modelo_impresora || '').replace('mod-', '') || 'GENERIC-AEG')}
                         </p>
                     </div>
                     <div>

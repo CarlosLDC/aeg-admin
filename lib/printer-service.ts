@@ -24,7 +24,7 @@ export const printerService = {
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
-        modelo:modelos_impresora (*),
+        modelo_data:modelos_impresora (*),
         precintos (
           id, serial, color, estatus, created_at, fecha_instalacion, fecha_retiro
         ),
@@ -94,9 +94,16 @@ export const printerService = {
       address: printer.sucursal
         ? `${printer.sucursal.direccion}${printer.sucursal.ciudad ? ', ' + printer.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
-      modelo: (Array.isArray(printer.modelo) ? printer.modelo[0] : printer.modelo) || 
-              (Array.isArray(printer.modelos_impresora) ? printer.modelos_impresora[0] : printer.modelos_impresora) || 
-              null,
+      modelo: (() => {
+        const m = (Array.isArray(printer.modelo_data) ? printer.modelo_data[0] : printer.modelo_data) || 
+                  (Array.isArray(printer.modelos_impresora) ? printer.modelos_impresora[0] : printer.modelos_impresora);
+        if (!m) return null;
+        return {
+          id: m.id,
+          marca: m.marca,
+          codigo_modelo: m.codigo_modelo || m.modelo // Fallback if they renamed it
+        };
+      })(),
       precintos: (printer.precintos || []).map((p: any) => ({ ...p, id: String(p.id) })),
       technicalReviews,
       annualInspections,
@@ -120,7 +127,7 @@ export const printerService = {
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
-        modelo:modelos_impresora (id, marca, codigo_modelo)
+        modelo_data:modelos_impresora (id, marca, codigo_modelo)
       `, { count: 'exact' });
 
     if (query) {
@@ -144,9 +151,16 @@ export const printerService = {
       address: p.sucursal
         ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
-      modelo: (Array.isArray(p.modelo) ? p.modelo[0] : p.modelo) || 
-              (Array.isArray(p.modelos_impresora) ? p.modelos_impresora[0] : p.modelos_impresora) || 
-              null,
+      modelo: (() => {
+        const m = (Array.isArray(p.modelo_data) ? p.modelo_data[0] : p.modelo_data) || 
+                  (Array.isArray(p.modelos_impresora) ? p.modelos_impresora[0] : p.modelos_impresora);
+        if (!m) return null;
+        return {
+          id: m.id,
+          marca: m.marca,
+          codigo_modelo: m.codigo_modelo || m.modelo
+        };
+      })(),
       precintos: [],
       technicalReviews: [],
       annualInspections: [],

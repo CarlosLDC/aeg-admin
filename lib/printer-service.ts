@@ -24,7 +24,7 @@ export const printerService = {
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
-        modelos_info:modelos_impresora (*),
+        modelos_impresora!id_modelo_impresora (*),
         precintos (
           id, serial, color, estatus, created_at, fecha_instalacion, fecha_retiro
         ),
@@ -47,8 +47,22 @@ export const printerService = {
       return undefined;
     }
 
-    console.log('DEBUG: RAW PRINTER FROM DB:', JSON.stringify(printer, null, 2));
-    console.log('DEBUG: MODELS JOIN RESULT:', (printer as any).modelos_impresora || (printer as any).modelo);
+    // --- Robust Model Data Fetching ---
+    let modelData = printer.modelos_impresora;
+    
+    // If join failed but we have an ID, try a manual fallback fetch
+    if (!modelData && printer.id_modelo_impresora) {
+      const { data: manualModel } = await supabase
+        .from('modelos_impresora')
+        .select('*')
+        .eq('id', printer.id_modelo_impresora)
+        .single();
+      
+      if (manualModel) {
+        modelData = manualModel;
+        console.log('DEBUG: Model fetched via manual fallback for ID:', printer.id_modelo_impresora);
+      }
+    }
 
     const technicalReviews: TechnicalReview[] = (printer.servicios_tecnicos || []).map((s: any) => ({
       id: String(s.id),
@@ -81,12 +95,15 @@ export const printerService = {
       tipo: i.tipo || null,
       precintoViolentado: i.precinto_violentado || false,
       status: (i.fecha_fin && new Date(i.fecha_fin) <= new Date()) ? 'passed' : 'pending',
-      observations: i.observaciones || '',
+      observations: i.observations || '',
       urlFotos: i.url_fotos || [],
       pdfUrl: i.url_fotos?.[0] || undefined,
       startTime: i.fecha_inicio ? i.fecha_inicio.split('T')[1]?.substring(0, 5) : null,
       endTime: i.fecha_fin ? i.fecha_fin.split('T')[1]?.substring(0, 5) : null,
     }));
+
+    // Final mapping
+    const m = Array.isArray(modelData) ? modelData[0] : modelData;
 
     return {
       ...printer,
@@ -97,16 +114,11 @@ export const printerService = {
       address: printer.sucursal
         ? `${printer.sucursal.direccion}${printer.sucursal.ciudad ? ', ' + printer.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
-      modelo: (() => {
-        const mData = (printer as any).modelos_info;
-        const m = Array.isArray(mData) ? mData[0] : mData;
-        if (!m) return null;
-        return {
-          id: m.id,
-          marca: m.marca || 'AEG',
-          codigo_modelo: m.codigo_modelo || m.modelo || String(m.id)
-        };
-      })(),
+      modelo: m ? {
+        id: m.id,
+        marca: m.marca || 'AEG',
+        codigo_modelo: m.codigo_modelo || m.modelo || String(m.id)
+      } : null,
       precintos: (printer.precintos || []).map((p: any) => ({ ...p, id: String(p.id) })),
       technicalReviews,
       annualInspections,
@@ -130,7 +142,7 @@ export const printerService = {
           *,
           company:empresas (id, razon_social, rif, tipo_contribuyente)
         ),
-        modelos_info:modelos_impresora (id, marca, codigo_modelo)
+        modelos_impresora!id_modelo_impresora (id, marca, codigo_modelo)
       `, { count: 'exact' });
 
     if (query) {
@@ -155,7 +167,7 @@ export const printerService = {
         ? `${p.sucursal.direccion}${p.sucursal.ciudad ? ', ' + p.sucursal.ciudad : ''}`
         : 'SIN UBICACIÓN',
       modelo: (() => {
-        const mData = (p as any).modelos_info;
+        const mData = (p as any).modelos_impresora;
         const m = Array.isArray(mData) ? mData[0] : mData;
         if (!m) return null;
         return {

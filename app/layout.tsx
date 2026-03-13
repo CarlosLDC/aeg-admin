@@ -53,6 +53,11 @@ export default function RootLayout({
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
+  // Set page title
+  useEffect(() => {
+    document.title = 'Libros Fiscales - AEG';
+  }, []);
+
   // 2. Initial Session Sync
   useEffect(() => {
     const initSession = async () => {
@@ -142,7 +147,7 @@ export default function RootLayout({
                 </div>
                 <div>
                   <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white block leading-none">AEG</span>
-                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Portal Administrativo</span>
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Libros Fiscales</span>
                 </div>
               </Link>
 

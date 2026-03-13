@@ -333,7 +333,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     doc.setFontSize(12);
                     doc.setTextColor(0, 0, 0);
                     doc.text('4. CIERRE Y RESPONSABILIDADES', margin, y);
-                    y += 15;
+                    y += 25;
 
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(8);

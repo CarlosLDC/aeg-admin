@@ -49,6 +49,24 @@ export default function SearchPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validar formato de serial fiscal o RIF
+    if (searchTerm.trim()) {
+      if (searchType === 'serial') {
+        const serialRegex = /^[A-Z]{3}[0-9]{7}$/;
+        if (!serialRegex.test(searchTerm.trim())) {
+          alert('El serial fiscal debe tener el formato: 3 letras mayúsculas seguidas de 7 dígitos (ej: GRA0000123)');
+          return;
+        }
+      } else if (searchType === 'rif') {
+        const rifRegex = /^[VEJPG][0-9]{7,9}$/;
+        if (!rifRegex.test(searchTerm.trim())) {
+          alert('El RIF debe tener el formato: V/E/J/P/G seguido de 7-9 dígitos (ej: J12345678)');
+          return;
+        }
+      }
+    }
+    
     performSearch(1, true);
   };
 
@@ -106,7 +124,7 @@ export default function SearchPage() {
             <div className="relative flex-1">
               <input
                 type="text"
-                placeholder={searchType === 'serial' ? 'Ej: GRA0000123' : 'Ej: J123456789'}
+                placeholder={searchType === 'serial' ? 'Ej: GRA0000123' : 'Ej: J12345678'}
                 value={searchTerm}
                 onChange={(e) => handleSearchTermChange(e.target.value)}
                 className="w-full h-14 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-5 text-lg outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-300 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-slate-900 dark:text-white placeholder:text-slate-400 font-medium font-mono"

@@ -106,9 +106,9 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             // Header
             // Background for header
             doc.setFillColor(245, 245, 245); // Light gray background
-            doc.rect(margin - 5, y - 5, 180, 20, 'F'); // Rectangle for header background
+            doc.rect(margin - 5, y - 5, 190, 20, 'F'); // Rectangle for header background, wider
 
-            doc.setFont('times', 'bold');
+            doc.setFont('helvetica', 'bold');
             doc.setFontSize(24);
             doc.setTextColor(0, 0, 0); // Black
             doc.text('AEG', margin, y);
@@ -124,7 +124,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setFontSize(10);
             doc.setTextColor(80, 80, 80);
             doc.text('SERIAL FISCAL:', 160, y, { align: 'right' });
-            doc.setFont('courier', 'bold');
+            doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
             doc.text(printer.serial_fiscal, 160, y + 6, { align: 'right' });
@@ -235,8 +235,8 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
 
                 // Re-draw header on new page
                 doc.setFillColor(245, 245, 245);
-                doc.rect(margin - 5, y - 5, 180, 20, 'F');
-                doc.setFont('times', 'bold');
+                doc.rect(margin - 5, y - 5, 190, 20, 'F');
+                doc.setFont('helvetica', 'bold');
                 doc.setFontSize(24);
                 doc.setTextColor(0, 0, 0);
                 doc.text('AEG', margin, y);
@@ -252,7 +252,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.setFontSize(10);
                 doc.setTextColor(80, 80, 80);
                 doc.text('SERIAL FISCAL:', 160, y, { align: 'right' });
-                doc.setFont('courier', 'bold');
+                doc.setFont('helvetica', 'bold');
                 doc.setFontSize(12);
                 doc.setTextColor(0, 0, 0);
                 doc.text(printer.serial_fiscal, 160, y + 6, { align: 'right' });

@@ -104,29 +104,33 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             let y = 25;
 
             // Header
+            // Background for header
+            doc.setFillColor(245, 245, 245); // Light gray background
+            doc.rect(margin - 5, y - 5, 180, 20, 'F'); // Rectangle for header background
+
             doc.setFont('times', 'bold');
             doc.setFontSize(24);
-            doc.setTextColor(0);
+            doc.setTextColor(0, 0, 0); // Black
             doc.text('AEG', margin, y);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
-            doc.setTextColor(100);
+            doc.setTextColor(80, 80, 80); // Dark gray
             doc.text('ALPHA ENGINEER GROUP, C.A.', margin, y + 5);
             doc.setFontSize(8);
             doc.text('RIF: J-40582910-3 | CONTROL FISCAL SENIAT 0141', margin, y + 10);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
-            doc.setTextColor(100);
+            doc.setTextColor(80, 80, 80);
             doc.text('SERIAL FISCAL:', 160, y, { align: 'right' });
             doc.setFont('courier', 'bold');
             doc.setFontSize(12);
-            doc.setTextColor(0);
+            doc.setTextColor(0, 0, 0);
             doc.text(printer.serial_fiscal, 160, y + 6, { align: 'right' });
 
-            doc.setDrawColor(0);
-            doc.setLineWidth(0.5);
+            doc.setDrawColor(100, 100, 100); // Gray line
+            doc.setLineWidth(0.2); // Thinner line
             doc.line(margin, y + 15, 200 - margin, y + 15);
 
             y = y + 25;
@@ -140,15 +144,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             };
 
             // Section 1: DATOS DEL FABRICANTE
+            doc.setFillColor(250, 250, 250); // Very light gray
+            doc.rect(margin - 2, y - 2, 170, 8, 'F');
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
-            doc.setTextColor(0);
+            doc.setTextColor(0, 0, 0);
             doc.text('1. DATOS DEL FABRICANTE', margin, y);
             y += 10;
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
-            doc.setTextColor(0);
+            doc.setTextColor(60, 60, 60); // Medium gray
             doc.text('Razón Social: ALPHA ENGINEER GROUP, C.A.', margin, y); y += 6;
             doc.text('RIF: J504594369', margin, y); y += 6;
             doc.text('Teléfono: +58 4242913038', margin, y); y += 6;
@@ -160,13 +166,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             checkPageBreak();
 
             // Section 2: DATOS DEL CONTRIBUYENTE/USUARIO
+            doc.setFillColor(250, 250, 250);
+            doc.rect(margin - 2, y - 2, 170, 8, 'F');
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
             doc.text('2. DATOS DEL CONTRIBUYENTE/USUARIO', margin, y);
             y += 10;
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
             doc.text(`Razón Social: ${printer.businessName || 'N/A'}`, margin, y); y += 6;
             doc.text(`RIF: ${printer.rif || 'N/A'}`, margin, y); y += 6;
             doc.text(`Tipo de Contribuyente: ${printer.taxpayerType || 'N/A'}`, margin, y); y += 6;
@@ -177,13 +187,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             checkPageBreak();
 
             // Section 3: DATOS DEL LUGAR DE INSTALACIÓN
+            doc.setFillColor(250, 250, 250);
+            doc.rect(margin - 2, y - 2, 170, 8, 'F');
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
             doc.text('3. DATOS DEL LUGAR DE INSTALACIÓN', margin, y);
             y += 10;
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
             doc.text(`Dirección: ${printer.sucursal?.direccion || 'N/A'}`, margin, y); y += 6;
             doc.text(`Ciudad: ${printer.sucursal?.ciudad || 'N/A'}`, margin, y); y += 6;
             doc.text(`Estado: ${printer.sucursal?.estado || 'N/A'}`, margin, y); y += 6;
@@ -193,13 +207,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             checkPageBreak();
 
             // Section 4: DATOS DE LA MÁQUINA FISCAL
+            doc.setFillColor(250, 250, 250);
+            doc.rect(margin - 2, y - 2, 170, 8, 'F');
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
             doc.text('4. DATOS DE LA MÁQUINA FISCAL', margin, y);
             y += 10;
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
             doc.text(`Número de Registro: ${printer.registro_fiscal || 'N/A'}`, margin, y); y += 6;
             doc.text(`Marca: ${printer.modelo?.marca || 'N/A'}`, margin, y); y += 6;
             doc.text(`Modelo: ${printer.modelo?.codigo_modelo || 'N/A'}`, margin, y); y += 6;
@@ -216,29 +234,31 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 y = 25;
 
                 // Re-draw header on new page
+                doc.setFillColor(245, 245, 245);
+                doc.rect(margin - 5, y - 5, 180, 20, 'F');
                 doc.setFont('times', 'bold');
                 doc.setFontSize(24);
-                doc.setTextColor(0);
+                doc.setTextColor(0, 0, 0);
                 doc.text('AEG', margin, y);
 
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(10);
-                doc.setTextColor(100);
+                doc.setTextColor(80, 80, 80);
                 doc.text('ALPHA ENGINEER GROUP, C.A.', margin, y + 5);
                 doc.setFontSize(8);
                 doc.text('RIF: J-40582910-3 | CONTROL FISCAL SENIAT 0141', margin, y + 10);
 
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(10);
-                doc.setTextColor(100);
+                doc.setTextColor(80, 80, 80);
                 doc.text('SERIAL FISCAL:', 160, y, { align: 'right' });
                 doc.setFont('courier', 'bold');
                 doc.setFontSize(12);
-                doc.setTextColor(0);
+                doc.setTextColor(0, 0, 0);
                 doc.text(printer.serial_fiscal, 160, y + 6, { align: 'right' });
 
-                doc.setDrawColor(0);
-                doc.setLineWidth(0.5);
+                doc.setDrawColor(100, 100, 100);
+                doc.setLineWidth(0.2);
                 doc.line(margin, y + 15, 200 - margin, y + 15);
 
                 y = y + 25;
@@ -247,14 +267,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     const tr = currentRecord as TechnicalReview;
 
                     // Section 1: DATOS DEL SERVICIO
+                    doc.setFillColor(250, 250, 250);
+                    doc.rect(margin - 2, y - 2, 170, 8, 'F');
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(12);
-                    doc.setTextColor(0);
+                    doc.setTextColor(0, 0, 0);
                     doc.text('1. DATOS DEL SERVICIO', margin, y);
                     y += 10;
 
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(10);
+                    doc.setTextColor(60, 60, 60);
                     doc.text(`Centro Autorizado: ${tr.serviceCenter}`, margin, y); y += 6;
                     doc.text(`RIF Centro: ${tr.centerRif}`, margin, y); y += 6;
                     doc.text(`Fecha de Solicitud: ${tr.fechaSolicitud || 'N/D'}`, margin, y); y += 6;
@@ -268,13 +291,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     checkPageBreak();
 
                     // Section 2: GESTIÓN DE PRECINTOS
+                    doc.setFillColor(250, 250, 250);
+                    doc.rect(margin - 2, y - 2, 170, 8, 'F');
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(12);
+                    doc.setTextColor(0, 0, 0);
                     doc.text('2. GESTIÓN DE PRECINTOS', margin, y);
                     y += 10;
 
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(10);
+                    doc.setTextColor(60, 60, 60);
                     doc.text(`Serial del Precinto Actual: ${tr.currentSealSerial || 'N/D'}`, margin, y); y += 6;
                     doc.text(`¿Precinto Violentado?: ${tr.sealBroken ? 'SÍ' : 'NO'}`, margin, y); y += 6;
                     doc.text(`¿Se Cambió el Precinto?: ${tr.sealReplaced ? 'SÍ' : 'NO'}`, margin, y); y += 6;
@@ -283,28 +310,38 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     checkPageBreak();
 
                     // Section 3: DETALLES DE LA INTERVENCIÓN
+                    doc.setFillColor(250, 250, 250);
+                    doc.rect(margin - 2, y - 2, 170, 8, 'F');
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(12);
+                    doc.setTextColor(0, 0, 0);
                     doc.text('3. DETALLES DE LA INTERVENCIÓN', margin, y);
                     y += 10;
 
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(10);
+                    doc.setTextColor(60, 60, 60);
                     const description = tr.description || 'N/A';
                     const splitDesc = doc.splitTextToSize(description.toUpperCase(), 160);
                     doc.text(splitDesc, margin, y);
                     y += (Array.isArray(splitDesc) ? splitDesc.length : 1) * 6 + 10;
 
                     // Section 4: CIERRE Y RESPONSABILIDADES
+                    doc.setFillColor(250, 250, 250);
+                    doc.rect(margin - 2, y - 2, 170, 8, 'F');
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(12);
+                    doc.setTextColor(0, 0, 0);
                     doc.text('4. CIERRE Y RESPONSABILIDADES', margin, y);
                     y += 15;
 
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(8);
+                    doc.setTextColor(60, 60, 60);
                     doc.text('TÉCNICO AUTORIZADO', margin + 35, y, { align: 'center' });
                     doc.text('PERSONA QUE RECIBE', 155, y, { align: 'center' });
+                    doc.setDrawColor(100, 100, 100);
+                    doc.setLineWidth(0.2);
                     doc.line(margin, y - 5, margin + 70, y - 5);
                     doc.line(120, y - 5, 120 + 70, y - 5);
 
@@ -312,14 +349,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     const ai = currentRecord as AnnualInspection;
 
                     // Section 1: DATOS DEL CENTRO Y TÉCNICO
+                    doc.setFillColor(250, 250, 250);
+                    doc.rect(margin - 2, y - 2, 170, 8, 'F');
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(12);
-                    doc.setTextColor(0);
+                    doc.setTextColor(0, 0, 0);
                     doc.text('1. DATOS DEL CENTRO Y TÉCNICO', margin, y);
                     y += 10;
 
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(10);
+                    doc.setTextColor(60, 60, 60);
                     doc.text(`Centro de Servicio: ${ai.serviceCenter}`, margin, y); y += 6;
                     doc.text(`RIF Centro: ${ai.centerRif}`, margin, y); y += 6;
                     doc.text(`Fecha de Inspección: ${ai.date}`, margin, y); y += 6;
@@ -328,13 +368,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     checkPageBreak();
 
                     // Section 2: DETALLES DE LA INSPECCIÓN
+                    doc.setFillColor(250, 250, 250);
+                    doc.rect(margin - 2, y - 2, 170, 8, 'F');
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(12);
+                    doc.setTextColor(0, 0, 0);
                     doc.text('2. DETALLES DE LA INSPECCIÓN', margin, y);
                     y += 10;
 
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(10);
+                    doc.setTextColor(60, 60, 60);
                     const observations = ai.observations || 'N/D';
                     const splitObs = doc.splitTextToSize(observations.toUpperCase(), 160);
                     doc.text(splitObs, margin, y);
@@ -343,8 +387,11 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     // Firmas
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(8);
+                    doc.setTextColor(80, 80, 80);
                     doc.text('FIRMA INSPECTOR', margin + 35, y, { align: 'center' });
                     doc.text('FIRMA CONTRIBUYENTE', 155, y, { align: 'center' });
+                    doc.setDrawColor(100, 100, 100);
+                    doc.setLineWidth(0.2);
                     doc.line(margin, y - 5, margin + 70, y - 5);
                     doc.line(120, y - 5, 120 + 70, y - 5);
                 }
@@ -353,7 +400,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             // Footer
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7);
-            doc.setTextColor(150);
+            doc.setTextColor(120, 120, 120);
             doc.text(`Documento generado por Portal de Auditoría AEG - ${new Date().toLocaleString()}`, 105, 275, { align: 'center' });
 
             const filename = `${printer.serial_fiscal}-${new Date().getTime()}.pdf`;

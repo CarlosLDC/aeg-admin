@@ -12,6 +12,7 @@ export default function SearchPage() {
   const [results, setResults] = useState<FiscalPrinter[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Pagination & Scrolling
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -49,19 +50,20 @@ export default function SearchPage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null); // Clear previous errors
     
     // Validar formato de serial fiscal o RIF
     if (searchTerm.trim()) {
       if (searchType === 'serial') {
         const serialRegex = /^[A-Z]{3}[0-9]{7}$/;
         if (!serialRegex.test(searchTerm.trim())) {
-          alert('El serial fiscal debe tener el formato: 3 letras mayúsculas seguidas de 7 dígitos (ej: GRA0000123)');
+          setErrorMessage('El serial fiscal debe tener el formato: 3 letras mayúsculas seguidas de 7 dígitos (ej: GRA0000123)');
           return;
         }
       } else if (searchType === 'rif') {
         const rifRegex = /^[VEJPG][0-9]{7,9}$/;
         if (!rifRegex.test(searchTerm.trim())) {
-          alert('El RIF debe tener el formato: V/E/J/P/G seguido de 7-9 dígitos (ej: J12345678)');
+          setErrorMessage('El RIF debe tener el formato: V/E/J/P/G seguido de 7-9 dígitos (ej: J12345678)');
           return;
         }
       }
@@ -143,6 +145,27 @@ export default function SearchPage() {
           </div>
 
         </form>
+
+        {/* Error Message */}
+        {errorMessage && (
+          <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              {errorMessage}
+            </div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              className="absolute top-4 right-4 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
+
       </div>
 
       <p className="mt-[-1rem] md:mt-[-2.5rem] mb-12 text-center text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-[0.2em] animate-in fade-in slide-in-from-top-2 duration-1000">

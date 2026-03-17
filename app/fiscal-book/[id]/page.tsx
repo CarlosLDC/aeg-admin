@@ -170,13 +170,42 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
 
             checkPageBreak();
 
-            // Section 2: DATOS DEL CONTRIBUYENTE/USUARIO
+            // Section 2: DATOS DEL ENAJENADOR
             doc.setFillColor(250, 250, 250);
             doc.rect(margin - 2, y - 2, 170, 8, 'F');
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
-            doc.text('2. DATOS DEL CONTRIBUYENTE/USUARIO', margin, y);
+            doc.text('2. DATOS DEL ENAJENADOR', margin, y);
+            y += 10;
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            if (printer.distribuidora?.sucursal) {
+                const dist = printer.distribuidora.sucursal;
+                doc.text(`Razón Social: ${dist.company?.razon_social || 'N/A'}`, margin, y); y += 6;
+                doc.text(`RIF: ${dist.company?.rif || 'N/A'}`, margin, y); y += 6;
+                doc.text(`Tipo de Contribuyente: ${dist.company?.tipo_contribuyente || 'N/A'}`, margin, y); y += 6;
+                if (dist.direccion) { doc.text(`Dirección: ${dist.direccion}`, margin, y); y += 6; }
+                doc.text(`Ciudad: ${dist.ciudad || 'N/A'}`, margin, y); y += 6;
+                doc.text(`Estado: ${dist.estado || 'N/A'}`, margin, y); y += 6;
+                if (dist.telefono) { doc.text(`Teléfono: ${dist.telefono}`, margin, y); y += 6; }
+                if (dist.correo) { doc.text(`Correo: ${dist.correo}`, margin, y); y += 6; }
+            } else {
+                doc.text('Sin enajenador registrado.', margin, y); y += 6;
+            }
+            y += 4;
+
+            checkPageBreak();
+
+            // Section 3: DATOS DEL CONTRIBUYENTE/USUARIO
+            doc.setFillColor(250, 250, 250);
+            doc.rect(margin - 2, y - 2, 170, 8, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text('3. DATOS DEL CONTRIBUYENTE/USUARIO', margin, y);
             y += 10;
 
             doc.setFont('helvetica', 'normal');
@@ -191,13 +220,13 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
 
             checkPageBreak();
 
-            // Section 3: DATOS DEL LUGAR DE INSTALACIÓN
+            // Section 4: DATOS DEL LUGAR DE INSTALACIÓN
             doc.setFillColor(250, 250, 250);
             doc.rect(margin - 2, y - 2, 170, 8, 'F');
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
-            doc.text('3. DATOS DEL LUGAR DE INSTALACIÓN', margin, y);
+            doc.text('4. DATOS DEL LUGAR DE INSTALACIÓN', margin, y);
             y += 10;
 
             doc.setFont('helvetica', 'normal');
@@ -211,13 +240,13 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
 
             checkPageBreak();
 
-            // Section 4: DATOS DE LA MÁQUINA FISCAL
+            // Section 5: DATOS DE LA MÁQUINA FISCAL
             doc.setFillColor(250, 250, 250);
             doc.rect(margin - 2, y - 2, 170, 8, 'F');
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
-            doc.text('4. DATOS DE LA MÁQUINA FISCAL', margin, y);
+            doc.text('5. DATOS DE LA MÁQUINA FISCAL', margin, y);
             y += 10;
 
             doc.setFont('helvetica', 'normal');
@@ -232,13 +261,13 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.text(`Tipo de Dispositivo Fiscal: ${printer.tipo_dispositivo}`, margin, y); y += 6;
             doc.text(`Versión del Firmware: ${printer.version_firmware || 'N/A'}`, margin, y); y += 10;
 
-            // Section 5: DATOS DEL SOFTWARE
+            // Section 6: DATOS DEL SOFTWARE
             doc.setFillColor(250, 250, 250);
             doc.rect(margin - 2, y - 2, 170, 8, 'F');
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
             doc.setTextColor(0, 0, 0);
-            doc.text('5. DATOS DEL SOFTWARE', margin, y);
+            doc.text('6. DATOS DEL SOFTWARE', margin, y);
             y += 10;
 
             doc.setFont('helvetica', 'normal');
@@ -670,7 +699,57 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
             </section>
 
             <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. DATOS DEL CONTRIBUYENTE/USUARIO</h2>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. DATOS DEL ENAJENADOR</h2>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    {printer.distribuidora?.sucursal ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="md:col-span-2">
+                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Razón Social</label>
+                                <p className="text-slate-900 dark:text-white font-black uppercase text-lg">{printer.distribuidora.sucursal.company?.razon_social || 'N/D'}</p>
+                            </div>
+                            <div>
+                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF</label>
+                                <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.distribuidora.sucursal.company?.rif || 'N/D'}</p>
+                            </div>
+                            <div>
+                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Tipo de Contribuyente</label>
+                                <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.distribuidora.sucursal.company?.tipo_contribuyente || 'N/D'}</p>
+                            </div>
+                            {printer.distribuidora.sucursal.direccion && (
+                                <div className="md:col-span-2">
+                                    <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Dirección</label>
+                                    <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.distribuidora.sucursal.direccion}</p>
+                                </div>
+                            )}
+                            <div>
+                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
+                                <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.distribuidora.sucursal.ciudad || 'N/D'}</p>
+                            </div>
+                            <div>
+                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estado</label>
+                                <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.distribuidora.sucursal.estado || 'N/D'}</p>
+                            </div>
+                            {printer.distribuidora.sucursal.telefono && (
+                                <div>
+                                    <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Teléfono</label>
+                                    <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.distribuidora.sucursal.telefono}</p>
+                                </div>
+                            )}
+                            {printer.distribuidora.sucursal.correo && (
+                                <div>
+                                    <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Correo</label>
+                                    <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.distribuidora.sucursal.correo}</p>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-slate-400 dark:text-slate-600 text-sm italic">Sin enajenador registrado.</p>
+                    )}
+                </div>
+            </section>
+
+            <section>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">3. DATOS DEL CONTRIBUYENTE/USUARIO</h2>
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
@@ -702,7 +781,7 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
             </section>
 
             <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">3. DATOS DEL LUGAR DE INSTALACIÓN</h2>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">4. DATOS DEL LUGAR DE INSTALACIÓN</h2>
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
@@ -730,7 +809,7 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
             </section>
 
             <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">4. DATOS DE LA MÁQUINA FISCAL</h2>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">5. DATOS DE LA MÁQUINA FISCAL</h2>
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -770,7 +849,7 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
             </section>
 
             <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">5. DATOS DEL SOFTWARE</h2>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">6. DATOS DEL SOFTWARE</h2>
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>

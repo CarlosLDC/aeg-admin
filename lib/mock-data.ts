@@ -96,6 +96,19 @@ export interface PrinterModel {
   precio: number;
 }
 
+export interface Distribuidora {
+  id: string | number;
+  sucursal: {
+    id: string | number;
+    ciudad: string;
+    estado: string;
+    direccion: string | null;
+    telefono: string | null;
+    correo: string | null;
+    company: Empresa;
+  } | null;
+}
+
 export interface Software {
   id: string | number;
   nombre: string;
@@ -158,6 +171,7 @@ export interface FiscalPrinter {
   software?: Software | null; // Joined data
   firmware?: Firmware | null; // Joined data
   sucursal?: Sucursal | null; // Joined data
+  distribuidora?: Distribuidora | null; // Joined data
   precintos: Precinto[];
   technicalReviews: TechnicalReview[];
   annualInspections: AnnualInspection[];

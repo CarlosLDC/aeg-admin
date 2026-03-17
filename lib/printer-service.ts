@@ -1,4 +1,4 @@
-import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto, Software, Firmware, Sucursal, mockTechnicalReviews, mockAnnualInspections } from './mock-data';
+import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto, Software, Firmware, Sucursal, Distribuidora, mockTechnicalReviews, mockAnnualInspections } from './mock-data';
 import { supabase } from './supabase';
 
 /**
@@ -39,6 +39,13 @@ export const printerService = {
           *,
           centro:centros_servicio (*),
           empleado:empleados (*)
+        ),
+        distribuidora:distribuidoras!id_distribuidora (
+          id,
+          sucursal:sucursales (
+            id, ciudad, estado, direccion, telefono, correo,
+            company:empresas (id, razon_social, rif, tipo_contribuyente)
+          )
         )
       `)
       .eq('id', cleanId)
@@ -142,6 +149,18 @@ export const printerService = {
       sucursal: printer.sucursal ? {
         ...printer.sucursal,
         company: printer.sucursal.company
+      } : null,
+      distribuidora: printer.distribuidora ? {
+        id: printer.distribuidora.id,
+        sucursal: printer.distribuidora.sucursal ? {
+          id: printer.distribuidora.sucursal.id,
+          ciudad: printer.distribuidora.sucursal.ciudad,
+          estado: printer.distribuidora.sucursal.estado,
+          direccion: printer.distribuidora.sucursal.direccion || null,
+          telefono: printer.distribuidora.sucursal.telefono || null,
+          correo: printer.distribuidora.sucursal.correo || null,
+          company: printer.distribuidora.sucursal.company,
+        } : null,
       } : null,
       precintos: (printer.precintos || []).map((p: any) => ({ ...p, id: String(p.id) })),
       technicalReviews,

@@ -558,7 +558,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 {/* Right: Actions (Spacer 2) */}
                 <div className="flex-1 flex items-center justify-end gap-4 w-full md:w-auto">
                     {viewMode !== 'info' && totalPages > 0 && (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1">
                             <button
                                 onClick={handlePrev}
                                 disabled={currentPage === 0}

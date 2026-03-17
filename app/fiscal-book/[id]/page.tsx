@@ -556,27 +556,27 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 </div>
 
                 {/* Right: Actions (Spacer 2) */}
-                <div className="flex-1 flex items-center justify-end gap-2 w-full md:w-auto">
+                <div className="flex-1 flex items-center justify-end gap-4 w-full md:w-auto">
                     {viewMode !== 'info' && totalPages > 0 && (
-                        <div className="flex items-center gap-1.5 mr-2">
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100/50 dark:bg-slate-800/20 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
                             <button
                                 onClick={handlePrev}
                                 disabled={currentPage === 0}
-                                className="p-2 rounded-lg bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all shadow-sm"
+                                className="h-8 w-8 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all shadow-sm"
                                 title="Anterior"
                             >
-                                <ArrowLeft size={16} />
+                                <ArrowLeft size={14} />
                             </button>
-                            <div className="text-muted dark:text-slate-400 text-[10px] font-mono font-bold bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 min-w-[70px] text-center">
+                            <div className="h-8 px-3 flex items-center justify-center text-muted dark:text-slate-400 text-[10px] font-mono font-bold bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 transition-all">
                                 {currentPage + 1} / {totalPages}
                             </div>
                             <button
                                 onClick={handleNext}
                                 disabled={currentPage === totalPages - 1}
-                                className="p-2 rounded-lg bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all shadow-sm"
+                                className="h-8 w-8 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all shadow-sm"
                                 title="Siguiente"
                             >
-                                <ArrowRight size={16} />
+                                <ArrowRight size={14} />
                             </button>
                         </div>
                     )}

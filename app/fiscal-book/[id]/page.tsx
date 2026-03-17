@@ -120,14 +120,19 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setFontSize(8);
             doc.text('RIF: J-40582910-3 | CONTROL FISCAL SENIAT 0141', margin, y + 10);
 
+            // Serial Box in PDF (Slightly smaller)
+            doc.setDrawColor(200, 200, 200);
+            doc.setFillColor(252, 252, 252);
+            doc.roundedRect(150, y - 5, 40, 15, 1, 1, 'FD');
+
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor(80, 80, 80);
-            doc.text('SERIAL FISCAL:', 160, y, { align: 'right' });
+            doc.setFontSize(8);
+            doc.setTextColor(120, 120, 120);
+            doc.text('SERIAL FISCAL', 188, y, { align: 'right' });
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(12);
+            doc.setFontSize(11);
             doc.setTextColor(0, 0, 0);
-            doc.text(printer.serial_fiscal, 160, y + 6, { align: 'right' });
+            doc.text(printer.serial_fiscal, 188, y + 6, { align: 'right' });
 
             doc.setDrawColor(100, 100, 100); // Gray line
             doc.setLineWidth(0.2); // Thinner line
@@ -218,15 +223,29 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
             doc.setTextColor(60, 60, 60);
-            doc.text(`Número de Registro: ${printer.registro_fiscal || 'N/A'}`, margin, y); y += 6;
+            doc.text(`Número de Registro (serial): ${printer.serial_fiscal}`, margin, y); y += 6;
             doc.text(`Marca: ${printer.modelo?.marca || 'N/A'}`, margin, y); y += 6;
             doc.text(`Modelo: ${printer.modelo?.codigo_modelo || 'N/A'}`, margin, y); y += 6;
             const activeSeal = getActiveSealSerial(printer);
             doc.text(`Serial del Precinto: ${activeSeal}`, margin, y); y += 6;
             doc.text(`Fecha de Instalación: ${printer.created_at ? new Date(printer.created_at).toLocaleDateString('es-VE') : 'N/A'}`, margin, y); y += 6;
-            doc.text(`Dispositivo Fiscal: ${printer.serial_fiscal}`, margin, y); y += 6;
-            doc.text(`Versión del Firmware: ${printer.firmware?.version || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Software: ${printer.software?.nombre || 'N/A'} v${printer.software?.version || 'N/A'}`, margin, y); y += 10;
+            doc.text(`Tipo de Dispositivo Fiscal: ${printer.tipo_dispositivo}`, margin, y); y += 6;
+            doc.text(`Versión del Firmware: ${printer.version_firmware || 'N/A'}`, margin, y); y += 10;
+
+            // Section 5: DATOS DEL SOFTWARE
+            doc.setFillColor(250, 250, 250);
+            doc.rect(margin - 2, y - 2, 170, 8, 'F');
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text('5. DATOS DEL SOFTWARE', margin, y);
+            y += 10;
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(60, 60, 60);
+            doc.text(`Nombre: ${printer.software?.nombre || 'N/A'}`, margin, y); y += 6;
+            doc.text(`Versión: ${printer.software?.version || 'N/A'}`, margin, y); y += 10;
 
             // --- PAGE 2: DETAILS ---
             if (viewMode !== 'info' && currentRecord) {
@@ -248,14 +267,19 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 doc.setFontSize(8);
                 doc.text('RIF: J-40582910-3 | CONTROL FISCAL SENIAT 0141', margin, y + 10);
 
+                // Serial Box in PDF (Page 2 - Slightly smaller)
+                doc.setDrawColor(200, 200, 200);
+                doc.setFillColor(252, 252, 252);
+                doc.roundedRect(150, y - 5, 40, 15, 1, 1, 'FD');
+
                 doc.setFont('helvetica', 'normal');
-                doc.setFontSize(10);
-                doc.setTextColor(80, 80, 80);
-                doc.text('SERIAL FISCAL:', 160, y, { align: 'right' });
+                doc.setFontSize(8);
+                doc.setTextColor(120, 120, 120);
+                doc.text('SERIAL FISCAL', 188, y, { align: 'right' });
                 doc.setFont('helvetica', 'bold');
-                doc.setFontSize(12);
+                doc.setFontSize(11);
                 doc.setTextColor(0, 0, 0);
-                doc.text(printer.serial_fiscal, 160, y + 6, { align: 'right' });
+                doc.text(printer.serial_fiscal, 188, y + 6, { align: 'right' });
 
                 doc.setDrawColor(100, 100, 100);
                 doc.setLineWidth(0.2);
@@ -433,14 +457,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                         display: none !important;
                     }
                     .print-container {
-                        width: 100% !important;
-                        max-width: none !important;
+                        width: 21.59cm !important;
+                        height: 27.94cm !important;
                         margin: 0 !important;
                         padding: 0 !important;
                         border: none !important;
                         box-shadow: none !important;
                         background: white !important;
                         color: black !important;
+                    }
+                    .print-content {
+                        padding: 1.5cm 2cm !important;
                     }
                     /* Ensure all text is dark and backgrounds are handled */
                     .print-container *, .print-container p, .print-container span, .print-container h1, .print-container h2, .print-container h3 {
@@ -467,7 +494,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             `}</style>
 
             {/* Context Header: Actions & Toggles (HIDDEN ON PRINT) */}
-            <div className="no-print w-full max-w-[900px] mb-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-3 rounded-2xl border border-slate-200 dark:border-slate-800 transition-colors">
+            <div className="no-print w-full max-w-[900px] mb-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl p-3 rounded-2xl border border-slate-200 dark:border-slate-800 transition-all sticky top-[68px] z-40 shadow-sm hover:shadow-md">
 
                 {/* Left: Back Button (Spacer 1) */}
                 <div className="flex-1 flex justify-start w-full md:w-auto">
@@ -500,7 +527,31 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                 </div>
 
                 {/* Right: Actions (Spacer 2) */}
-                <div className="flex-1 flex items-center justify-end gap-3 w-full md:w-auto">
+                <div className="flex-1 flex items-center justify-end gap-2 w-full md:w-auto">
+                    {viewMode !== 'info' && totalPages > 0 && (
+                        <div className="flex items-center gap-1.5 mr-2">
+                            <button
+                                onClick={handlePrev}
+                                disabled={currentPage === 0}
+                                className="p-2 rounded-lg bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all shadow-sm"
+                                title="Anterior"
+                            >
+                                <ArrowLeft size={16} />
+                            </button>
+                            <div className="text-muted dark:text-slate-400 text-[10px] font-mono font-bold bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 min-w-[70px] text-center">
+                                {currentPage + 1} / {totalPages}
+                            </div>
+                            <button
+                                onClick={handleNext}
+                                disabled={currentPage === totalPages - 1}
+                                className="p-2 rounded-lg bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all shadow-sm"
+                                title="Siguiente"
+                            >
+                                <ArrowRight size={16} />
+                            </button>
+                        </div>
+                    )}
+                    
                     <button
                         onClick={downloadPDF}
                         disabled={isDownloading || viewMode === 'info' || records.length === 0}
@@ -513,21 +564,18 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                             <DownloadIcon size={20} />
                         )}
                     </button>
-                    <div className="text-muted dark:text-slate-400 text-xs font-mono font-bold bg-white dark:bg-slate-800 px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 min-w-[85px] text-center">
-                        {totalPages > 0 ? `Pag ${currentPage + 1}/${totalPages}` : 'Sin Registros'}
-                    </div>
                 </div>
             </div>
 
-            {/* Formal Record Sheet (Letter Size: 21.59cm x 27.94cm) */}
-            <div className="w-full overflow-x-auto pb-6 -mx-2 px-2 md:mx-0 md:px-0">
-                <div className="print-container min-w-[800px] w-full max-w-[21.59cm] min-h-[27.94cm] bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 shadow-xl border border-slate-200 dark:border-slate-800 relative flex flex-col overflow-hidden transition-colors mx-auto">
+            {/* Formal Record Sheet */}
+            <div className="w-full overflow-x-auto pb-6">
+                <div className="print-container w-full md:max-w-[21.59cm] bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 shadow-xl border border-slate-200 dark:border-slate-800 relative flex flex-col overflow-hidden transition-colors mx-auto">
 
                     {/* Content Area */}
-                    <div className="flex-1 px-10 py-12 md:px-16 md:py-14 relative z-10 flex flex-col">
+                    <div className="print-content flex-1 px-6 py-8 md:px-16 md:py-14 relative z-10 flex flex-col">
 
                         {/* Official Banner - Simplified */}
-                        <div className="flex items-start justify-between border-b border-slate-900 dark:border-slate-100 pb-6 mb-10">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-900 dark:border-slate-100 pb-6 mb-10 gap-4 sm:gap-0">
                             <div>
                                 <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
                                     Libro de Control y Reparación
@@ -536,9 +584,9 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                                     Máquina Fiscal - Providencia SENIAT 0141
                                 </p>
                             </div>
-                            <div className="text-right flex flex-col items-end border border-slate-200 dark:border-slate-800 rounded p-2 bg-slate-50 dark:bg-slate-900 transition-colors">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">Serial Fiscal</span>
-                                <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">{printer.serial_fiscal}</span>
+                            <div className="text-right flex flex-col items-end border border-slate-200 dark:border-slate-800 rounded-lg px-4 py-2 bg-slate-50 dark:bg-slate-900 transition-colors shadow-sm">
+                                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-0.5">Serial Fiscal</span>
+                                <span className="font-mono text-base font-black text-slate-900 dark:text-white leading-none">{printer.serial_fiscal}</span>
                             </div>
                         </div>
 
@@ -564,30 +612,6 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                         </div>
                     </div>
 
-                    {/* Navigation Footer (HIDDEN ON PRINT) */}
-                    {viewMode !== 'info' && totalPages > 0 && (
-                        <div className="no-print mt-auto border-t border-slate-100 dark:border-slate-900 px-8 py-4 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center z-10 transition-colors">
-                            <button
-                                onClick={handlePrev}
-                                disabled={currentPage === 0}
-                                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-foreground disabled:opacity-20 transition-colors"
-                            >
-                                <ArrowLeft size={14} /> Anterior
-                            </button>
-
-                            <div className="text-slate-300 dark:text-slate-700 font-mono text-[9px] uppercase tracking-widest">
-                                Hoja de Registro {currentPage + 1} de {totalPages}
-                            </div>
-
-                            <button
-                                onClick={handleNext}
-                                disabled={currentPage === totalPages - 1}
-                                className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-foreground disabled:opacity-20 transition-colors"
-                            >
-                                Siguiente <ArrowRight size={14} />
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
         </main>
@@ -710,8 +734,12 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Número de Registro</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.registro_fiscal || 'N/D'}</p>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Número de Registro (serial)</label>
+                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.serial_fiscal || 'N/D'}</p>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Tipo de Dispositivo Fiscal</label>
+                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold uppercase">{printer.tipo_dispositivo || 'N/D'}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Marca</label>
@@ -734,16 +762,24 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                             </p>
                         </div>
                         <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Dispositivo Fiscal</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.serial_fiscal || 'N/D'}</p>
-                        </div>
-                        <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Versión del Firmware</label>
-                            <p className="font-mono text-slate-900 dark:text-white font-black text-sm">{printer.firmware?.version || 'N/D'}</p>
+                            <p className="font-mono text-slate-900 dark:text-white font-black text-sm">{printer.version_firmware || 'N/D'}</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">5. DATOS DEL SOFTWARE</h2>
+                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Nombre</label>
+                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold uppercase">{printer.software?.nombre || 'N/D'}</p>
                         </div>
                         <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Versión del Software</label>
-                            <p className="font-mono text-slate-900 dark:text-white font-black text-sm">{printer.software?.nombre ? `${printer.software.nombre} v${printer.software.version || 'N/D'}` : 'N/D'}</p>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Versión</label>
+                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold uppercase">{printer.software?.version || 'N/D'}</p>
                         </div>
                     </div>
                 </div>
@@ -828,7 +864,7 @@ function SingleTechSheet({ review, printer }: { review: TechnicalReview, printer
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Falla Reportada y Acción Realizada</label>
-                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 min-h-[100px] whitespace-pre-wrap">
+                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
                             {review.description || 'SIN DESCRIPCIÓN'}
                         </p>
                     </div>
@@ -886,7 +922,7 @@ function SingleInspectionSheet({ inspection, printer }: { inspection: AnnualInsp
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Observaciones y Hallazgos</label>
-                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 min-h-[120px] whitespace-pre-wrap">
+                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
                             {inspection.observations || 'EL EQUIPO CUMPLE SATISFACTORIAMENTE CON TODOS LOS REQUERIMIENTOS TÉCNICOS Y LEGALES ESTABLECIDOS EN LA PROVIDENCIA 0141 DEL SENIAT.'}
                         </p>
                     </div>

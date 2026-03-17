@@ -44,3 +44,15 @@ body {
   scrollbar-width: none;  /* Firefox */
 }
 
+/* Logo theme awareness */
+.logo-theme-aware {
+  transition: filter 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.logo-theme-aware:hover {
+  transform: scale(1.05);
+}
+
+.dark .logo-theme-aware {
+  filter: brightness(0) invert(1);
+}

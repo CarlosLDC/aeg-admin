@@ -113,6 +113,8 @@ export const printerService = {
     return {
       ...printer,
       registro_fiscal: printer.registro_fiscal || null,
+      tipo_dispositivo: printer.tipo_dispositivo || 'interno',
+      version_firmware: printer.version_firmware || null,
       businessName: printer.sucursal?.company?.razon_social || 'SIN ASIGNAR',
       rif: printer.sucursal?.company?.rif || 'N/A',
       taxpayerType: printer.sucursal?.company?.tipo_contribuyente || 'N/A',
@@ -216,6 +218,7 @@ export const printerService = {
 
       return {
         ...p,
+        tipo_dispositivo: p.tipo_dispositivo || 'interno',
         businessName: p.sucursal?.company?.razon_social || 'SIN ASIGNAR',
         rif: p.sucursal?.company?.rif || 'N/A',
         taxpayerType: p.sucursal?.company?.tipo_contribuyente || 'N/A',
@@ -337,6 +340,7 @@ export const printerService = {
 
       return {
         ...p,
+        tipo_dispositivo: p.tipo_dispositivo || 'interno',
         businessName: p.sucursal?.company?.razon_social || 'SIN ASIGNAR',
         rif: p.sucursal?.company?.rif || 'N/A',
         taxpayerType: p.sucursal?.company?.tipo_contribuyente || 'N/A',

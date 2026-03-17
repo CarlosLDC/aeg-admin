@@ -145,6 +145,8 @@ export interface FiscalPrinter {
   precio_venta_final: number | null; 
   se_pago: boolean | null; 
   registro_fiscal?: string | null;
+  tipo_dispositivo: 'interno' | 'externo';
+  version_firmware?: string | null;
   created_at?: string | null; // Fecha de instalación
 
   // UI Fallback props (Transient)
@@ -171,7 +173,9 @@ export const mockPrinters: FiscalPrinter[] = [
     id_compra: 'cmp-2020-091',
     id_software: 'sw-pos-retail-v2',
     id_firmware: 'fw-aeg-v7.1',
+    version_firmware: 'V7.1.0-REV2',
     estatus: 'asignada',
+    tipo_dispositivo: 'interno',
     precio_venta_final: 850.00,
     se_pago: true,
 
@@ -243,7 +247,9 @@ export const mockPrinters: FiscalPrinter[] = [
     id_compra: 'cmp-2023-142',
     id_software: 'sw-pos-resto-v4',
     id_firmware: 'fw-aeg-v5.3',
+    version_firmware: 'V5.3.4-PRO',
     estatus: 'laboratorio',
+    tipo_dispositivo: 'interno',
     precio_venta_final: 600.00,
     se_pago: false,
 

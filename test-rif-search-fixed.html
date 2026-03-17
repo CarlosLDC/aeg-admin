@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Búsqueda por RIF</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Prueba de Búsqueda por RIF</h1>
+        
+        <div class="test-section">
+            <h3>📋 Probar búsqueda por RIF</h3>
+            <input type="text" id="rifInput" placeholder="Ingrese RIF (ej: J504594369)" value="J504594369">
+            <button onclick="testRifSearch()">Probar Búsqueda</button>
+            <div id="rifResult" class="result info" style="display: none;">
+                Resultado aparecerá aquí...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Probar detección de formato</h3>
+            <input type="text" id="formatInput" placeholder="Ingrese valor para probar formato">
+            <button onclick="testFormat()">Probar Formato</button>
+            <div id="formatResult" class="result info" style="display: none;">
+                Resultado aparecerá aquí...
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 Casos de prueba</h3>
+            <button onclick="runAllTests()">Ejecutar Todas las Pruebas</button>
+            <div id="allTestsResult" class="result info" style="display: none;">
+                Resultados aparecerán aquí...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showResult(elementId, message, type) {
+            type = type || 'info';
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'result ' + type;
+            element.textContent = message;
+        }
+
+        function testRifSearch() {
+            const rif = document.getElementById('rifInput').value.trim();
+            const isValidRif = /^[VEJPG][0-9]{7,9}$/.test(rif);
+            const normalizedRif = rif.replace(/[^A-Z0-9]/g, '').toUpperCase();
+            const searchMethod = isValidRif ? 'searchByRif() directo' : 'searchPrinters() general';
+            
+            const message = '🔍 Probando búsqueda por RIF: "' + rif + '"\n\n' +
+                '✅ Formato válido: ' + isValidRif + '\n' +
+                '📋 RIF normalizado: "' + normalizedRif + '"\n' +
+                '📋 Método de búsqueda: ' + searchMethod + '\n' +
+                '📋 Query en Supabase: sucursal.company.rif = "' + normalizedRif + '"\n\n' +
+                '📋 Próximo paso: Abrir consola del navegador y buscar en /fiscal-book';
+                
+            showResult('rifResult', message);
+        }
+
+        function testFormat() {
+            const value = document.getElementById('formatInput').value.trim();
+            const isRif = /^[VEJPG][0-9]{7,9}$/.test(value);
+            const isSerial = /^[A-Z]{3}[0-9]{7}$/.test(value);
+            const normalized = value.replace(/[^A-Z0-9]/g, '').toUpperCase();
+
+            const message = '🔍 Análisis de formato para: "' + value + '"\n\n' +
+                '📋 Es RIF válido: ' + isRif + '\n' +
+                '📋 Es Serial válido: ' + isSerial + '\n' +
+                '📋 Valor normalizado: "' + normalized + '"\n\n' +
+                '📋 Si es RIF: búsqueda directa con JOIN\n' +
+                '📋 Si es Serial: búsqueda por campo serial_fiscal\n' +
+                '📋 Si no es válido: devuelve array vacío';
+
+            showResult('formatResult', message, isRif || isSerial ? 'success' : 'error');
+        }
+
+        function runAllTests() {
+            const tests = [
+                'J504594369',    // RIF válido
+                'J-504594369',   // Con guión
+                'J 504594369',   // Con espacio
+                'j504594369',    // Minúscula
+                'V12345678',     // RIF V
+                'E123456789',    // RIF E
+                'ABC1234567',    // Serial fiscal
+                'INVALIDO',       // Formato inválido
+                ''                // Vacío
+            ];
+
+            let results = tests.map(function(test) {
+                const isRif = /^[VEJPG][0-9]{7,9}$/.test(test);
+                const isSerial = /^[A-Z]{3}[0-9]{7}$/.test(test);
+                const normalized = test.replace(/[^A-Z0-9]/g, '').toUpperCase();
+                
+                return test.padEnd(15) + ' → RIF: ' + (isRif ? '✅' : '❌') + 
+                       ' | Serial: ' + (isSerial ? '✅' : '❌') + 
+                       ' | Normalizado: ' + normalized;
+            }).join('\n');
+
+            const summary = '\n📋 Resumen:\n' +
+                '- RIFs válidos: J504594369, V12345678, E123456789\n' +
+                '- Serial válido: ABC1234567\n' +
+                '- Formatos inválidos: con guiones, espacios, minúsculas, texto\n' +
+                '- La normalización elimina caracteres no alfanuméricos';
+
+            showResult('allTestsResult', '🧪 RESULTADOS DE TODAS LAS PRUEBAS:\n\n' + results + summary);
+        }
+
+        // Auto-ejecutar prueba inicial
+        window.onload = function() {
+            testRifSearch();
+        };
+    </script>
+</body>
+</html>

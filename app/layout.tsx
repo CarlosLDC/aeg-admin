@@ -17,40 +17,23 @@ export default function RootLayout({
 }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const router = useRouter();
   const pathname = usePathname();
 
-  // 1. Theme Logic & Listeners
+  // 1. Theme Logic
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null;
-    const initialTheme = savedTheme || 'system';
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    const initialTheme = savedTheme || 'light';
     setTheme(initialTheme);
 
-    const applyTheme = (t: 'light' | 'dark' | 'system') => {
+    const applyTheme = (t: 'light' | 'dark') => {
       const root = document.documentElement;
-      if (t === 'system') {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        if (prefersDark) root.classList.add('dark');
-        else root.classList.remove('dark');
-      } else {
-        if (t === 'dark') root.classList.add('dark');
-        else root.classList.remove('dark');
-      }
+      if (t === 'dark') root.classList.add('dark');
+      else root.classList.remove('dark');
     };
 
     applyTheme(initialTheme);
-
-    // Listener for system preference changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      if (localStorage.getItem('theme') === 'system' || !localStorage.getItem('theme')) {
-        applyTheme('system');
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
   // Set page title
@@ -65,11 +48,13 @@ export default function RootLayout({
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.error("Auth session error:", error.message);
           // If local session is corrupted or refresh token missing, forcefully sign out to clear storage
           if (error.message.includes('Refresh Token')) {
+            // Silence this specific error as it's common when session expires or is cleared
             await supabase.auth.signOut();
             setUser(null);
+          } else {
+            console.error("Auth session error:", error.message);
           }
         } else {
           setUser(session?.user ?? null);
@@ -101,23 +86,14 @@ export default function RootLayout({
   }, [user, loading, pathname, router]);
 
   const cycleTheme = () => {
-    let nextTheme: 'light' | 'dark' | 'system';
-    if (theme === 'system') nextTheme = 'light';
-    else if (theme === 'light') nextTheme = 'dark';
-    else nextTheme = 'system';
+    const nextTheme: 'light' | 'dark' = theme === 'light' ? 'dark' : 'light';
 
     setTheme(nextTheme);
     localStorage.setItem('theme', nextTheme);
 
     const root = document.documentElement;
-    if (nextTheme === 'system') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) root.classList.add('dark');
-      else root.classList.remove('dark');
-    } else {
-      if (nextTheme === 'dark') root.classList.add('dark');
-      else root.classList.remove('dark');
-    }
+    if (nextTheme === 'dark') root.classList.add('dark');
+    else root.classList.remove('dark');
   };
 
   const handleLogout = async () => {
@@ -140,15 +116,7 @@ export default function RootLayout({
 
               {/* Home Link via Logo */}
               <Link href="/" className="flex items-center gap-3 group">
-                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-105 transition-transform text-white">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5" /><rect x="6" y="14" width="12" height="8" rx="2" />
-                  </svg>
-                </div>
-                <div>
-                  <span className="text-lg font-black tracking-tighter text-slate-900 dark:text-white block leading-none">AEG</span>
-                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Libros Fiscales</span>
-                </div>
+                <img src="/aeg-logo.png" alt="AEG Logo" className="h-10 w-auto logo-theme-aware" />
               </Link>
 
               {/* Toolbar */}
@@ -157,11 +125,10 @@ export default function RootLayout({
                 <button
                   onClick={cycleTheme}
                   className="p-2.5 rounded-xl text-muted hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900"
-                  title={`Tema: ${theme === 'system' ? 'Sistema' : (theme === 'dark' ? 'Oscuro' : 'Claro')}`}
+                  title={`Tema: ${theme === 'dark' ? 'Oscuro' : 'Claro'}`}
                 >
-                  {theme === 'system' && <MonitorIcon size={18} />}
-                  {theme === 'light' && <SunIcon size={18} />}
-                  {theme === 'dark' && <MoonIcon size={18} />}
+                  {theme === 'light' && <MoonIcon size={18} />}
+                  {theme === 'dark' && <SunIcon size={18} />}
                 </button>
 
                 {/* User Menu / Logout */}
@@ -202,15 +169,6 @@ export default function RootLayout({
   );
 }
 
-function MonitorIcon({ size }: { size: number }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect width="20" height="14" x="2" y="3" rx="2" />
-      <line x1="8" x2="16" y1="21" y2="21" />
-      <line x1="12" x2="12" y1="17" y2="21" />
-    </svg>
-  );
-}
 
 function SunIcon({ size }: { size: number }) {
   return (
@@ -228,3 +186,4 @@ function MoonIcon({ size }: { size: number }) {
     </svg>
   );
 }
+

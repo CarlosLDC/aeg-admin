@@ -1,10 +1,24 @@
 'use client';
 
 import { useState, use, useEffect, useRef } from 'react';
+import { useUserProfile } from '@/app/layout';
 import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto } from '@/lib/mock-data';
 import { printerService } from '@/lib/printer-service';
 import Link from 'next/link';
 import jsPDF from 'jspdf';
+
+// Formatting Helper
+const formatTimestamp = (dateStr: string | null | undefined) => {
+    if (!dateStr) return null;
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        const pad = (n: number) => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+    } catch {
+        return dateStr;
+    }
+};
 
 // Helper to chunk arrays
 function chunkArray<T>(array: T[], size: number): T[][] {
@@ -15,21 +29,42 @@ function chunkArray<T>(array: T[], size: number): T[][] {
     return chunked_arr;
 }
 
+const NoData = () => (
+    <span className="text-slate-400 dark:text-slate-600 text-sm italic font-medium normal-case">N/D</span>
+);
+
+const InfoIcon = ({ size = 16, className = "", title }: { size?: number, className?: string, title?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        {title && <title>{title}</title>}
+        <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
+    </svg>
+);
+
+const truncateVersion = (version: string | null | undefined) => {
+    if (!version) return null;
+    const parts = version.split('.');
+    if (parts.length > 1) {
+        return parts.slice(0, -1).join('.');
+    }
+    return version;
+};
+
 // Helper function to find the active seal
 const getActiveSealSerial = (printer: FiscalPrinter) => {
     if (!printer.precintos || printer.precintos.length === 0) {
-        return 'SIN PRECINTO ACTIVO';
+        return null;
     }
     
     const activeSeal = printer.precintos.find(precinto => 
         precinto.id_impresora !== null && precinto.estatus === 'en_impresora'
     );
     
-    return activeSeal ? activeSeal.serial : 'SIN PRECINTO ACTIVO';
+    return activeSeal ? activeSeal.serial : null;
 };
 
 export default function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const { profile } = useUserProfile();
     const [printer, setPrinter] = useState<FiscalPrinter | undefined>(undefined);
     const [loading, setLoading] = useState(true);
 
@@ -37,6 +72,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
     const [viewMode, setViewMode] = useState<'info' | 'tech' | 'inspection'>('info');
     const [currentPage, setCurrentPage] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -140,6 +176,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
 
             y = y + 25;
 
+            // Helper for PDF fields with N/D styling
+            const drawField = (label: string, value: string | null | undefined, x: number, py: number) => {
+                doc.setFont('helvetica', 'normal');
+                doc.text(`${label}: `, x, py);
+                const v = value || 'N/D';
+                if (v === 'N/D') doc.setFont('helvetica', 'italic');
+                doc.text(v, x + doc.getTextWidth(`${label}: `), py);
+                doc.setFont('helvetica', 'normal');
+                return doc.getTextWidth(`${label}: ${v}`);
+            };
+
             // Function to add page if needed
             const checkPageBreak = () => {
                 if (y > 250) {
@@ -162,11 +209,9 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setTextColor(60, 60, 60); // Medium gray
             doc.text('Razón Social: ALPHA ENGINEER GROUP, C.A.', margin, y); y += 6;
             doc.text('RIF: J504594369', margin, y); y += 6;
-            doc.text('Teléfono: +58 4242913038', margin, y); y += 6;
+            doc.text(`Estado: MIRANDA    Ciudad: LOS TEQUES`, margin, y); y += 6;
             doc.text('Domicilio Fiscal: AVENIDA BICENTENARIO, REDOMA DEL TAMBOR, EDIFICIO VERACRUZ, PISO 1, LOCAL N° 3', margin, y); y += 6;
-            doc.text('Ciudad: LOS TEQUES', margin, y); y += 6;
-            doc.text('Estado: MIRANDA', margin, y); y += 6;
-            doc.text('Correo: soportealphavzla@gmail.com', margin, y); y += 10;
+            doc.text('Teléfono: 584242913038    Correo: soportealphavzla@gmail.com', margin, y); y += 10;
 
             checkPageBreak();
 
@@ -184,16 +229,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setTextColor(60, 60, 60);
             if (printer.distribuidora?.sucursal) {
                 const dist = printer.distribuidora.sucursal;
-                doc.text(`Razón Social: ${dist.company?.razon_social || 'N/A'}`, margin, y); y += 6;
-                doc.text(`RIF: ${dist.company?.rif || 'N/A'}`, margin, y); y += 6;
-                doc.text(`Tipo de Contribuyente: ${dist.company?.tipo_contribuyente || 'N/A'}`, margin, y); y += 6;
-                if (dist.direccion) { doc.text(`Dirección: ${dist.direccion}`, margin, y); y += 6; }
-                doc.text(`Ciudad: ${dist.ciudad || 'N/A'}`, margin, y); y += 6;
-                doc.text(`Estado: ${dist.estado || 'N/A'}`, margin, y); y += 6;
-                if (dist.telefono) { doc.text(`Teléfono: ${dist.telefono}`, margin, y); y += 6; }
-                if (dist.correo) { doc.text(`Correo: ${dist.correo}`, margin, y); y += 6; }
+                drawField('Razón Social', dist.company?.razon_social, margin, y); y += 6;
+                drawField('RIF', dist.company?.rif, margin, y); y += 6;
+                const estadoW = drawField('Estado', dist.estado, margin, y);
+                drawField('    Ciudad', dist.ciudad, margin + estadoW, y); y += 6;
+                drawField('Dirección', dist.direccion, margin, y); y += 6;
+                const telW = drawField('Teléfono', dist.telefono, margin, y);
+                drawField('    Correo', dist.correo, margin + telW, y); y += 6;
             } else {
+                doc.setFont('helvetica', 'italic');
                 doc.text('Sin enajenador registrado.', margin, y); y += 6;
+                doc.setFont('helvetica', 'normal');
             }
             y += 4;
 
@@ -211,12 +257,14 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
             doc.setTextColor(60, 60, 60);
-            doc.text(`Razón Social: ${printer.businessName || 'N/A'}`, margin, y); y += 6;
-            doc.text(`RIF: ${printer.rif || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Tipo de Contribuyente: ${printer.taxpayerType || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Domicilio Fiscal: ${printer.address || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Ciudad: ${printer.sucursal?.ciudad || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Estado: ${printer.sucursal?.estado || 'N/A'}`, margin, y); y += 10;
+            drawField('Razón Social', printer.businessName, margin, y); y += 6;
+            const rifW = drawField('RIF', printer.rif, margin, y);
+            drawField('    Tipo de Contribuyente', printer.taxpayerType?.toUpperCase(), margin + rifW, y); y += 6;
+            const estW = drawField('Estado', printer.sucursal?.estado, margin, y);
+            drawField('    Ciudad', printer.sucursal?.ciudad, margin + estW, y); y += 6;
+            drawField('Domicilio Fiscal', printer.address, margin, y); y += 6;
+            const telCW = drawField('Teléfono', printer.sucursal?.telefono, margin, y);
+            drawField('    Correo', printer.sucursal?.correo, margin + telCW, y); y += 10;
 
             checkPageBreak();
 
@@ -232,11 +280,9 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
             doc.setTextColor(60, 60, 60);
-            doc.text(`Dirección: ${printer.sucursal?.direccion || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Ciudad: ${printer.sucursal?.ciudad || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Estado: ${printer.sucursal?.estado || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Teléfono: ${printer.sucursal?.telefono || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Correo Electrónico: ${printer.sucursal?.correo || 'N/A'}`, margin, y); y += 10;
+            doc.setFont('helvetica', 'italic');
+            doc.text('El lugar de instalación es el domicilio fiscal del contribuyente.', margin, y); y += 10;
+            doc.setFont('helvetica', 'normal');
 
             checkPageBreak();
 
@@ -253,13 +299,13 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setFontSize(10);
             doc.setTextColor(60, 60, 60);
             doc.text(`Número de Registro (serial): ${printer.serial_fiscal}`, margin, y); y += 6;
-            doc.text(`Marca: ${printer.modelo?.marca || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Modelo: ${printer.modelo?.codigo_modelo || 'N/A'}`, margin, y); y += 6;
+            drawField('Marca', printer.modelo?.marca, margin, y); y += 6;
+            drawField('Modelo', printer.modelo?.codigo_modelo, margin, y); y += 6;
             const activeSeal = getActiveSealSerial(printer);
             doc.text(`Serial del Precinto: ${activeSeal}`, margin, y); y += 6;
-            doc.text(`Fecha de Instalación: ${printer.created_at ? new Date(printer.created_at).toLocaleDateString('es-VE') : 'N/A'}`, margin, y); y += 6;
+            drawField('Fecha de Instalación', printer.created_at ? new Date(printer.created_at).toLocaleDateString('es-VE') : null, margin, y); y += 6;
             doc.text(`Tipo de Dispositivo Fiscal: ${printer.tipo_dispositivo}`, margin, y); y += 6;
-            doc.text(`Versión del Firmware: ${printer.version_firmware || 'N/A'}`, margin, y); y += 10;
+            drawField('Versión del Firmware', truncateVersion(printer.version_firmware), margin, y); y += 10;
 
             // Section 6: DATOS DEL SOFTWARE
             doc.setFillColor(250, 250, 250);
@@ -273,8 +319,8 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(10);
             doc.setTextColor(60, 60, 60);
-            doc.text(`Nombre: ${printer.software?.nombre || 'N/A'}`, margin, y); y += 6;
-            doc.text(`Versión: ${printer.software?.version || 'N/A'}`, margin, y); y += 10;
+            drawField('Nombre', printer.software?.nombre, margin, y); y += 6;
+            drawField('Versión', printer.software?.version, margin, y); y += 10;
 
             // --- PAGE 2: DETAILS ---
             if (viewMode !== 'info' && currentRecord) {
@@ -331,15 +377,15 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(10);
                     doc.setTextColor(60, 60, 60);
-                    doc.text(`Centro Autorizado: ${tr.serviceCenter}`, margin, y); y += 6;
-                    doc.text(`RIF Centro: ${tr.centerRif}`, margin, y); y += 6;
-                    doc.text(`Fecha de Solicitud: ${tr.fechaSolicitud || 'N/D'}`, margin, y); y += 6;
-                    doc.text(`Fecha de Inicio: ${tr.date}`, margin, y); y += 6;
-                    doc.text(`Fecha de Fin: ${tr.date}`, margin, y); y += 6;
-                    doc.text(`Primera Reporte Z: ${tr.zReportStart}`, margin, y); y += 6;
-                    doc.text(`Fecha y Hora de Primer Reporte Z: ${tr.zReportTimestampStart || 'N/D'}`, margin, y); y += 6;
-                    doc.text(`Último Reporte Z: ${tr.zReportEnd}`, margin, y); y += 6;
-                    doc.text(`Fecha y Hora de Último Reporte Z: ${tr.zReportTimestampEnd || 'N/D'}`, margin, y); y += 10;
+                    drawField('Centro Autorizado', tr.serviceCenter, margin, y); y += 6;
+                    drawField('RIF Centro', tr.centerRif, margin, y); y += 6;
+                    drawField('Fecha de Solicitud', tr.fechaSolicitud, margin, y); y += 6;
+                    drawField('Fecha de Inicio', tr.date, margin, y); y += 6;
+                    drawField('Fecha de Fin', tr.date, margin, y); y += 6;
+                    drawField('Primera Reporte Z', tr.zReportStart, margin, y); y += 6;
+                    drawField('Fecha y Hora de Primer Reporte Z', tr.zReportTimestampStart, margin, y); y += 6;
+                    drawField('Último Reporte Z', tr.zReportEnd, margin, y); y += 6;
+                    drawField('Fecha y Hora de Último Reporte Z', tr.zReportTimestampEnd, margin, y); y += 10;
 
                     checkPageBreak();
 
@@ -355,10 +401,10 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(10);
                     doc.setTextColor(60, 60, 60);
-                    doc.text(`Serial del Precinto Actual: ${tr.currentSealSerial || 'N/D'}`, margin, y); y += 6;
+                    drawField('Serial del Precinto Actual', tr.currentSealSerial, margin, y); y += 6;
                     doc.text(`¿Precinto Violentado?: ${tr.sealBroken ? 'SÍ' : 'NO'}`, margin, y); y += 6;
                     doc.text(`¿Se Cambió el Precinto?: ${tr.sealReplaced ? 'SÍ' : 'NO'}`, margin, y); y += 6;
-                    doc.text(`Serial del Nuevo Precinto: ${tr.newSealSerial || 'N/D'}`, margin, y); y += 10;
+                    drawField('Serial del Nuevo Precinto', tr.newSealSerial, margin, y); y += 10;
 
                     checkPageBreak();
 
@@ -374,9 +420,11 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(10);
                     doc.setTextColor(60, 60, 60);
-                    const description = tr.description || 'N/A';
+                    const description = tr.description || 'N/D';
+                    if (description === 'N/D') doc.setFont('helvetica', 'italic');
                     const splitDesc = doc.splitTextToSize(description.toUpperCase(), 160);
                     doc.text(splitDesc, margin, y);
+                    doc.setFont('helvetica', 'normal');
                     y += (Array.isArray(splitDesc) ? splitDesc.length : 1) * 6 + 10;
 
                     // Section 4: CIERRE Y RESPONSABILIDADES
@@ -413,10 +461,10 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     doc.setFont('helvetica', 'normal');
                     doc.setFontSize(10);
                     doc.setTextColor(60, 60, 60);
-                    doc.text(`Centro de Servicio: ${ai.serviceCenter}`, margin, y); y += 6;
-                    doc.text(`RIF Centro: ${ai.centerRif}`, margin, y); y += 6;
-                    doc.text(`Fecha de Inspección: ${ai.date}`, margin, y); y += 6;
-                    doc.text(`Inspector Actuante: ${ai.inspector}`, margin, y); y += 10;
+                    drawField('Centro de Servicio', ai.serviceCenter, margin, y); y += 6;
+                    drawField('RIF Centro', ai.centerRif, margin, y); y += 6;
+                    drawField('Fecha de Inspección', ai.date, margin, y); y += 6;
+                    drawField('Inspector Actuante', ai.inspector, margin, y); y += 10;
 
                     checkPageBreak();
 
@@ -433,8 +481,10 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     doc.setFontSize(10);
                     doc.setTextColor(60, 60, 60);
                     const observations = ai.observations || 'N/D';
+                    if (observations === 'N/D') doc.setFont('helvetica', 'italic');
                     const splitObs = doc.splitTextToSize(observations.toUpperCase(), 160);
                     doc.text(splitObs, margin, y);
+                    doc.setFont('helvetica', 'normal');
                     y += (Array.isArray(splitObs) ? splitObs.length : 1) * 6 + 15;
 
                     // Firmas
@@ -466,8 +516,90 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
         }
     };
 
+    const tabsMenu = (
+        <div className="flex w-full md:w-auto overflow-x-auto hide-scrollbar bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur p-1 rounded-xl shadow-inner snap-x">
+            <button
+                onClick={() => handleTabChange('info')}
+                className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-colors snap-start flex-1 md:flex-none ${viewMode === 'info' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
+            >
+                Inf. Base
+            </button>
+            <button
+                onClick={() => handleTabChange('tech')}
+                className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-colors snap-start flex-1 md:flex-none ${viewMode === 'tech' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
+            >
+                Servicios ({printer.technicalReviews.length})
+            </button>
+            <button
+                onClick={() => handleTabChange('inspection')}
+                className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-colors snap-start flex-1 md:flex-none ${viewMode === 'inspection' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
+            >
+                Inspecciones ({printer.annualInspections.length})
+            </button>
+        </div>
+    );
+
+    const actionMenu = (
+        <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto">
+            {/* Pagination Control - Reverting to integrated Pill style */}
+            {viewMode !== 'info' && totalPages > 0 ? (
+                <div className="flex items-center bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm">
+                    <button
+                        onClick={handlePrev}
+                        disabled={currentPage === 0}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                        title="Anterior"
+                    >
+                        <ArrowLeft size={14} />
+                    </button>
+                    <div className="px-3 flex items-center justify-center text-slate-600 dark:text-slate-300 text-[11px] font-mono font-bold tabular-nums">
+                        {String(currentPage + 1).padStart(2, '0')} / {String(totalPages).padStart(2, '0')}
+                    </div>
+                    <button
+                        onClick={handleNext}
+                        disabled={currentPage === totalPages - 1}
+                        className="h-7 w-7 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                        title="Siguiente"
+                    >
+                        <ArrowRight size={14} />
+                    </button>
+                </div>
+            ) : <div />}
+            
+            {/* Actions (Add/Download) - Hidden in 'Inf. Base' as requested */}
+            {viewMode !== 'info' && (
+                <div className="flex items-center bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm group/actions">
+                    {profile?.rol === 'distribuidora' && (
+                        <Link
+                            href={`/fiscal-book/${id}/${viewMode === 'tech' ? 'new-service' : 'new-inspection'}`}
+                            className="flex justify-center items-center h-7 px-3 gap-2 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700"
+                            title={viewMode === 'tech' ? 'Añadir Servicio' : 'Añadir Inspección'}
+                        >
+                            <PlusIcon size={14} />
+                            <span className="text-[10px] font-bold uppercase tracking-tight">Nuevo</span>
+                        </Link>
+                    )}
+
+                    <button
+                        onClick={downloadPDF}
+                        disabled={isDownloading || records.length === 0}
+                        className="flex justify-center items-center h-7 px-3 gap-2 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none"
+                        title="Descargar PDF"
+                    >
+                        {isDownloading ? (
+                            <div className="w-[12px] h-[12px] border-2 border-slate-500 border-t-transparent rounded-full animate-spin tabular-nums"></div>
+                        ) : (
+                            <DownloadIcon size={14} />
+                        )}
+                        <span className="text-[10px] font-bold uppercase tracking-tight">PDF</span>
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+
     return (
-        <main className="container mx-auto px-2 py-6 md:py-12 flex flex-col items-center min-h-screen">
+        <main className="container mx-auto px-2 pt-6 pb-12 md:pt-8 md:pb-16 flex flex-col items-center min-h-screen">
             <style jsx global>{`
                 @media print {
                     @page {
@@ -523,77 +655,46 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             `}</style>
 
             {/* Context Header: Actions & Toggles (HIDDEN ON PRINT) */}
-            <div className="no-print w-full max-w-[900px] mb-6 flex flex-col md:flex-row gap-4 justify-between items-center bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl p-3 rounded-2xl border border-slate-200 dark:border-slate-800 transition-all sticky top-[68px] z-40 shadow-sm hover:shadow-md">
+            <div className="no-print w-full max-w-[900px] mb-6 md:mb-8 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl p-3 md:p-3 rounded-2xl border border-slate-200 dark:border-slate-800 sticky top-[68px] z-40 shadow-sm hover:shadow-md">
+                
+                {/* Top Row: Always visible */}
+                <div className="flex justify-between items-center w-full">
+                    <div className="flex-1 flex justify-start md:w-auto">
+                        <Link href="/" className="inline-flex items-center gap-2 text-muted hover:text-foreground transition-colors pl-2">
+                            <ArrowLeft size={18} />
+                            <span className="text-sm font-medium">Volver</span>
+                        </Link>
+                    </div>
 
-                {/* Left: Back Button (Spacer 1) */}
-                <div className="flex-1 flex justify-start w-full md:w-auto">
-                    <Link href="/" className="inline-flex items-center gap-2 text-muted hover:text-foreground transition-colors pl-2">
-                        <ArrowLeft size={18} />
-                        <span className="text-sm font-medium">Volver</span>
-                    </Link>
+                    {/* Desktop Center: Tabs (hidden on mobile) */}
+                    <div className="hidden md:flex flex-none mx-4">
+                        {tabsMenu}
+                    </div>
+
+                    {/* Desktop Right: Actions (hidden on mobile) */}
+                    <div className="hidden md:flex flex-1 justify-end">
+                        {actionMenu}
+                    </div>
+
+                    {/* Mobile Menu Toggle (visible on mobile only) */}
+                    <div className="md:hidden flex justify-end">
+                        <button 
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700"
+                            title="Opciones"
+                        >
+                            {isMobileMenuOpen ? <XIcon size={18} /> : <MenuIcon size={18} />}
+                        </button>
+                    </div>
                 </div>
 
-                {/* Center: Tabs (True Center) */}
-                <div className="flex-none flex overflow-x-auto hide-scrollbar bg-slate-200/50 dark:bg-slate-800/50 backdrop-blur p-1 rounded-xl shadow-inner snap-x">
-                    <button
-                        onClick={() => handleTabChange('info')}
-                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'info' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
-                    >
-                        Inf. Base
-                    </button>
-                    <button
-                        onClick={() => handleTabChange('tech')}
-                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'tech' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
-                    >
-                        Servicios ({printer.technicalReviews.length})
-                    </button>
-                    <button
-                        onClick={() => handleTabChange('inspection')}
-                        className={`px-4 py-2 text-sm whitespace-nowrap font-semibold rounded-lg transition-all snap-start ${viewMode === 'inspection' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-muted hover:text-foreground'}`}
-                    >
-                        Inspecciones ({printer.annualInspections.length})
-                    </button>
-                </div>
-
-                {/* Right: Actions (Spacer 2) */}
-                <div className="flex-1 flex items-center justify-end gap-4 w-full md:w-auto">
-                    {viewMode !== 'info' && totalPages > 0 && (
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={handlePrev}
-                                disabled={currentPage === 0}
-                                className="h-8 w-8 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all shadow-sm"
-                                title="Anterior"
-                            >
-                                <ArrowLeft size={14} />
-                            </button>
-                            <div className="h-8 px-3 flex items-center justify-center text-muted dark:text-slate-400 text-[10px] font-mono font-bold bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 transition-all">
-                                {currentPage + 1} / {totalPages}
-                            </div>
-                            <button
-                                onClick={handleNext}
-                                disabled={currentPage === totalPages - 1}
-                                className="h-8 w-8 flex items-center justify-center rounded-lg bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 disabled:opacity-30 disabled:pointer-events-none active:scale-95 transition-all shadow-sm"
-                                title="Siguiente"
-                            >
-                                <ArrowRight size={14} />
-                            </button>
-                        </div>
-                    )}
-                    
-                    <button
-                        onClick={downloadPDF}
-                        disabled={isDownloading || viewMode === 'info' || records.length === 0}
-                        className="flex justify-center items-center w-10 h-10 rounded-xl transition-all duration-200 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-sm border border-slate-200 dark:border-slate-700 disabled:opacity-40 disabled:pointer-events-none active:scale-95"
-                        title="Descargar PDF"
-                    >
-                        {isDownloading ? (
-                            <div className="w-[18px] h-[18px] border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                            <DownloadIcon size={20} />
-                        )}
-                    </button>
-                </div>
+                {/* Mobile Expanded Menu */}
+                {isMobileMenuOpen && (
+                    <div className="md:hidden flex flex-col gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 animate-in fade-in duration-200">
+                        {tabsMenu}
+                        {actionMenu}
+                    </div>
+                )}
             </div>
 
             {/* Formal Record Sheet */}
@@ -670,29 +771,29 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Razón Social</label>
                             <p className="text-slate-900 dark:text-white font-black uppercase text-lg">ALPHA ENGINEER GROUP, C.A.</p>
                         </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">J504594369</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">TELÉFONO</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">+58 4242913038</p>
-                        </div>
                         <div className="md:col-span-2">
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Domicilio fiscal</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">AVENIDA BICENTENARIO, REDOMA DEL TAMBOR, EDIFICIO VERACRUZ, PISO 1, LOCAL N° 3</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">LOS TEQUES</p>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF</label>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">J504594369</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estado</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">MIRANDA</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">MIRANDA</p>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">LOS TEQUES</p>
                         </div>
                         <div className="md:col-span-2">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Domicilio fiscal</label>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase">AVENIDA BICENTENARIO, REDOMA DEL TAMBOR, EDIFICIO VERACRUZ, PISO 1, LOCAL N° 3</p>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">TELÉFONO</label>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">584242913038</p>
+                        </div>
+                        <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">CORREO</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">soportealphavzla@gmail.com</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black tracking-tight">soportealphavzla@gmail.com</p>
                         </div>
                     </div>
                 </div>
@@ -705,42 +806,32 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2">
                                 <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Razón Social</label>
-                                <p className="text-slate-900 dark:text-white font-black uppercase text-lg">{printer.distribuidora.sucursal.company?.razon_social || 'N/D'}</p>
+                                <p className="text-slate-900 dark:text-white font-black uppercase text-lg">{printer.distribuidora.sucursal.company?.razon_social || <NoData />}</p>
                             </div>
-                            <div>
+                            <div className="md:col-span-2">
                                 <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF</label>
-                                <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.distribuidora.sucursal.company?.rif || 'N/D'}</p>
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Tipo de Contribuyente</label>
-                                <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.distribuidora.sucursal.company?.tipo_contribuyente || 'N/D'}</p>
-                            </div>
-                            {printer.distribuidora.sucursal.direccion && (
-                                <div className="md:col-span-2">
-                                    <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Dirección</label>
-                                    <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.distribuidora.sucursal.direccion}</p>
-                                </div>
-                            )}
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
-                                <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.distribuidora.sucursal.ciudad || 'N/D'}</p>
+                                <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.distribuidora.sucursal.company?.rif || <NoData />}</p>
                             </div>
                             <div>
                                 <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estado</label>
-                                <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.distribuidora.sucursal.estado || 'N/D'}</p>
+                                <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.distribuidora.sucursal.estado || <NoData />}</p>
                             </div>
-                            {printer.distribuidora.sucursal.telefono && (
-                                <div>
-                                    <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Teléfono</label>
-                                    <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.distribuidora.sucursal.telefono}</p>
-                                </div>
-                            )}
-                            {printer.distribuidora.sucursal.correo && (
-                                <div>
-                                    <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Correo</label>
-                                    <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.distribuidora.sucursal.correo}</p>
-                                </div>
-                            )}
+                            <div>
+                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
+                                <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.distribuidora.sucursal.ciudad || <NoData />}</p>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Dirección</label>
+                                <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase">{printer.distribuidora.sucursal.direccion || <NoData />}</p>
+                            </div>
+                            <div>
+                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Teléfono</label>
+                                <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.distribuidora.sucursal.telefono || <NoData />}</p>
+                            </div>
+                            <div>
+                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Correo</label>
+                                <p className="font-mono text-slate-900 dark:text-white text-xs font-black tracking-tight">{printer.distribuidora.sucursal.correo || <NoData />}</p>
+                            </div>
                         </div>
                     ) : (
                         <p className="text-slate-400 dark:text-slate-600 text-sm italic">Sin enajenador registrado.</p>
@@ -754,27 +845,35 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Razón Social</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-lg">{printer.businessName}</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-lg">{printer.businessName || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.rif}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.rif || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Tipo de Contribuyente</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.taxpayerType || 'N/A'}</p>
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Domicilio Fiscal</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.address}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.sucursal?.ciudad || 'N/A'}</p>
+                            <p className="text-slate-900 dark:text-white font-black text-xs uppercase tracking-tight">{printer.taxpayerType ? printer.taxpayerType.toUpperCase() : <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estado</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.sucursal?.estado || 'N/A'}</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.sucursal?.estado || <NoData />}</p>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.sucursal?.ciudad || <NoData />}</p>
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Domicilio Fiscal</label>
+                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase">{printer.address || <NoData />}</p>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Teléfono</label>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.sucursal?.telefono || <NoData />}</p>
+                        </div>
+                        <div>
+                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Correo</label>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black tracking-tight">{printer.sucursal?.correo || <NoData />}</p>
                         </div>
                     </div>
                 </div>
@@ -783,28 +882,7 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
             <section>
                 <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">4. DATOS DEL LUGAR DE INSTALACIÓN</h2>
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Dirección Completa</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.sucursal?.direccion || 'N/D'}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.sucursal?.ciudad || 'N/D'}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estado</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.sucursal?.estado || 'N/D'}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Teléfono</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.sucursal?.telefono || 'N/D'}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Correo Electrónico</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm">{printer.sucursal?.correo || 'N/D'}</p>
-                        </div>
-                    </div>
+                    <p className="text-slate-400 dark:text-slate-600 text-sm italic">El lugar de instalación es el domicilio fiscal del contribuyente.</p>
                 </div>
             </section>
 
@@ -814,35 +892,51 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Número de Registro (serial)</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{printer.serial_fiscal || 'N/D'}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.serial_fiscal || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Tipo de Dispositivo Fiscal</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold uppercase">{printer.tipo_dispositivo || 'N/D'}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.tipo_dispositivo || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Marca</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{printer.modelo?.marca || 'N/D'}</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.modelo?.marca || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Modelo</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{printer.modelo?.codigo_modelo || 'N/D'}</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.modelo?.codigo_modelo || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial del Precinto</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">
-                                {getActiveSealSerial(printer) || 'N/D'}
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">
+                                {getActiveSealSerial(printer) || <NoData />}
                             </p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Instalación</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">
-                                {printer.created_at ? new Date(printer.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/D'}
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">
+                                {printer.created_at ? new Date(printer.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : <NoData />}
                             </p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Versión del Firmware</label>
-                            <p className="font-mono text-slate-900 dark:text-white font-black text-sm">{printer.version_firmware || 'N/D'}</p>
+                            <div className="inline-flex items-center gap-1.5 group relative cursor-help">
+                                <p className="font-mono text-slate-900 dark:text-white font-black text-sm m-0">
+                                    {truncateVersion(printer.version_firmware) || <NoData />}
+                                </p>
+                                {printer.version_firmware && (
+                                    <>
+                                        <InfoIcon 
+                                            size={14} 
+                                            className="text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors flex-shrink-0 relative -top-[1px]" 
+                                        />
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap z-50 pointer-events-none shadow-xl border border-slate-200 dark:border-slate-700 translate-y-1 group-hover:translate-y-0">
+                                            Versión completa: <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{printer.version_firmware}</span>
+                                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-slate-800" />
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -854,11 +948,11 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Nombre</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold uppercase">{printer.software?.nombre || 'N/D'}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.software?.nombre || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Versión</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold uppercase">{printer.software?.version || 'N/D'}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.software?.version || <NoData />}</p>
                         </div>
                     </div>
                 </div>
@@ -876,39 +970,39 @@ function SingleTechSheet({ review, printer }: { review: TechnicalReview, printer
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Centro de Servicio Técnico Autorizado</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{review.serviceCenter}</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{review.serviceCenter || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF Centro de Servicio</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{review.centerRif}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.centerRif || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Solicitud</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{review.fechaSolicitud}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.fechaSolicitud || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Inicio</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{review.date}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.date || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Fin</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{review.date}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.date || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Primera Reporte Z</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{review.zReportStart}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.zReportStart || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha y Hora de Primer Reporte Z</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{review.zReportTimestampStart}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{formatTimestamp(review.zReportTimestampStart) || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Último Reporte Z</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{review.zReportEnd}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.zReportEnd || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha y Hora de Último Reporte Z</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{review.zReportTimestampEnd}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{formatTimestamp(review.zReportTimestampEnd) || <NoData />}</p>
                         </div>
                     </div>
                 </div>
@@ -920,19 +1014,19 @@ function SingleTechSheet({ review, printer }: { review: TechnicalReview, printer
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial del Precinto Actual</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{review.currentSealSerial || 'SIN PRECINTO ACTIVO'}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.currentSealSerial || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">¿Precinto Violentado?</label>
-                            <p className={`font-black text-sm uppercase ${review.sealBroken ? 'text-red-500' : 'text-emerald-500'}`}>{review.sealBroken ? 'SÍ' : 'NO'}</p>
+                            <p className={`font-black text-xs uppercase tracking-tight ${review.sealBroken ? 'text-red-500' : 'text-emerald-500'}`}>{review.sealBroken ? 'SÍ' : 'NO'}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">¿Se Cambió el Precinto?</label>
-                            <p className={`font-black text-sm uppercase ${review.sealReplaced ? 'text-blue-500' : 'text-slate-400'}`}>{review.sealReplaced ? 'SÍ' : 'NO'}</p>
+                            <p className={`font-black text-xs uppercase tracking-tight ${review.sealReplaced ? 'text-blue-500' : 'text-slate-400'}`}>{review.sealReplaced ? 'SÍ' : 'NO'}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial del Nuevo Precinto</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{review.newSealSerial || 'N/A'}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.newSealSerial || <NoData />}</p>
                         </div>
                     </div>
                 </div>
@@ -943,8 +1037,8 @@ function SingleTechSheet({ review, printer }: { review: TechnicalReview, printer
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Falla Reportada y Acción Realizada</label>
-                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
-                            {review.description || 'SIN DESCRIPCIÓN'}
+                        <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
+                            {review.description || <NoData />}
                         </p>
                     </div>
                 </div>
@@ -956,11 +1050,11 @@ function SingleTechSheet({ review, printer }: { review: TechnicalReview, printer
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Técnico Autorizado</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{review.technician}</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{review.technician || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Persona que Recibe</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{printer.businessName}</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.businessName || <NoData />}</p>
                         </div>
                     </div>
                 </div>
@@ -978,19 +1072,19 @@ function SingleInspectionSheet({ inspection, printer }: { inspection: AnnualInsp
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Centro de Servicio Técnico</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{inspection.serviceCenter}</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{inspection.serviceCenter || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF Centro de Servicio</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{inspection.centerRif}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{inspection.centerRif || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Inspección</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-sm font-bold">{inspection.date}</p>
+                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{inspection.date || <NoData />}</p>
                         </div>
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Inspector Actuante</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-sm">{inspection.inspector}</p>
+                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{inspection.inspector || <NoData />}</p>
                         </div>
                     </div>
                 </div>
@@ -1001,8 +1095,8 @@ function SingleInspectionSheet({ inspection, printer }: { inspection: AnnualInsp
                 <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
                     <div>
                         <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Observaciones y Hallazgos</label>
-                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
-                            {inspection.observations || 'EL EQUIPO CUMPLE SATISFACTORIAMENTE CON TODOS LOS REQUERIMIENTOS TÉCNICOS Y LEGALES ESTABLECIDOS EN LA PROVIDENCIA 0141 DEL SENIAT.'}
+                        <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
+                            {inspection.observations || <NoData />}
                         </p>
                     </div>
                 </div>
@@ -1021,7 +1115,6 @@ function DownloadIcon({ size, className }: { size: number; className?: string })
     );
 }
 
-// Icons
 function ArrowLeft({ size, className }: { size: number; className?: string }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -1042,6 +1135,30 @@ function PrinterIcon({ size, className }: { size: number; className?: string }) 
     return (
         <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
             <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5" /><rect x="6" y="14" width="12" height="8" rx="2" />
+        </svg>
+    );
+}
+
+function MenuIcon({ size, className }: { size: number; className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>
+        </svg>
+    );
+}
+
+function XIcon({ size, className }: { size: number; className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+        </svg>
+    );
+}
+
+function PlusIcon({ size, className }: { size: number; className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
         </svg>
     );
 }

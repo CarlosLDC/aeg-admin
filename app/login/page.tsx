@@ -35,9 +35,11 @@ export default function LoginPage() {
         <div className="flex items-center justify-center min-h-[60vh] px-4 py-12 flex-1 animate-in fade-in duration-700">
             <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none border border-slate-100 dark:border-slate-800 p-8 md:p-10 transition-colors">
                 <div className="text-center mb-10">
-                    <img src="/aeg-logo.png" alt="AEG Logo" className="h-16 w-auto mx-auto mb-6 logo-theme-aware" />
+                    <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 transition-colors">
+                        <LockIcon size={32} />
+                    </div>
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white transition-colors">Bienvenido de nuevo</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-2 transition-colors">Ingresa tus credenciales para acceder al portal</p>
+                    <p className="text-slate-500 dark:text-slate-400 mt-2 transition-colors">Ingrese sus credenciales para acceder al portal</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">

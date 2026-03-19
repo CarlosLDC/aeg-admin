@@ -3,12 +3,30 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, createContext, useContext } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
 
 const inter = Inter({ subsets: ['latin'] });
+
+export type UserProfile = {
+  id: number;
+  id_usuario: string;
+  rol: 'seniat' | 'distribuidora' | 'cliente' | 'admin';
+  id_distribuidora: number | null;
+  nombre_completo: string | null;
+};
+
+export const UserProfileContext = createContext<{
+  user: User | null;
+  profile: UserProfile | null;
+  loading: boolean;
+}>({ user: null, profile: null, loading: true });
+
+export function useUserProfile() {
+  return useContext(UserProfileContext);
+}
 
 export default function RootLayout({
   children,
@@ -18,6 +36,8 @@ export default function RootLayout({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
   const router = useRouter();
   const pathname = usePathname();
 
@@ -43,6 +63,21 @@ export default function RootLayout({
 
   // 2. Initial Session Sync
   useEffect(() => {
+    const fetchProfile = async (userId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from('perfiles')
+          .select('*')
+          .eq('id_usuario', userId)
+          .maybeSingle();
+        if (error) throw error;
+        setProfile(data);
+      } catch (err) {
+        console.error("[Auth] Error fetching profile:", err);
+        setProfile(null);
+      }
+    };
+
     const initSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -53,11 +88,17 @@ export default function RootLayout({
             // Silence this specific error as it's common when session expires or is cleared
             await supabase.auth.signOut();
             setUser(null);
+            setProfile(null);
           } else {
             console.error("Auth session error:", error.message);
           }
         } else {
           setUser(session?.user ?? null);
+          if (session?.user) {
+            await fetchProfile(session.user.id);
+          } else {
+            setProfile(null);
+          }
         }
       } catch (e) {
         console.error("Auth init exception:", e);
@@ -67,8 +108,13 @@ export default function RootLayout({
     };
     initSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -78,12 +124,16 @@ export default function RootLayout({
   useEffect(() => {
     if (loading) return;
 
-    if (!user && pathname !== '/login') {
+    const isLogin = pathname === '/login';
+    const isHome = pathname === '/';
+    const isDistribuidoraRoute = pathname.startsWith('/distribuidora');
+
+    if (!user && !isLogin) {
       router.push('/login');
-    } else if (user && pathname === '/login') {
+    } else if (user && isLogin) {
       router.push('/');
     }
-  }, [user, loading, pathname, router]);
+  }, [user, profile, loading, pathname, router]);
 
   const cycleTheme = () => {
     const nextTheme: 'light' | 'dark' = theme === 'light' ? 'dark' : 'light';
@@ -149,13 +199,15 @@ export default function RootLayout({
           </header>
 
           <div className="flex-1 w-full flex flex-col">
-            {loading && pathname !== '/login' ? (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="animate-pulse text-muted font-medium">Cargando sesión...</div>
-              </div>
-            ) : (
-              children
-            )}
+            <UserProfileContext.Provider value={{ user, profile, loading }}>
+              {loading && pathname !== '/login' ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="animate-pulse text-muted font-medium">Cargando sesión...</div>
+                </div>
+              ) : (
+                children
+              )}
+            </UserProfileContext.Provider>
           </div>
 
           <footer className="bg-white dark:bg-slate-950 border-t border-slate-200/60 dark:border-slate-800/60 py-8 mt-auto transition-colors">

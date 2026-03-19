@@ -4,8 +4,15 @@ import { useState, useRef } from 'react';
 import { FiscalPrinter } from '@/lib/mock-data';
 import { printerService } from '@/lib/printer-service';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+const NoData = () => (
+  <span className="text-slate-400 dark:text-slate-600 text-sm italic font-medium normal-case">N/D</span>
+);
 
 export default function SearchPage() {
+  const router = useRouter();
+  
   // State
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'serial' | 'rif'>('serial');
@@ -29,10 +36,29 @@ export default function SearchPage() {
 
   const performSearch = async (page: number, isNewSearch: boolean = false) => {
     setLoading(true);
-    if (isNewSearch) setHasSearched(true);
+    
+    // Si es nueva búsqueda, limpiamos estados previos para evitar flasheos
+    if (isNewSearch) {
+      setHasSearched(false);
+      setResults([]);
+    }
 
     try {
       const { data, count } = await printerService.searchPrinters(searchTerm, page, PAGE_SIZE);
+
+      // Interceptar resultados exactos o vacíos para búsqueda por serial
+      if (isNewSearch && searchType === 'serial' && searchTerm.trim() !== '') {
+        if (count === 1 && data.length > 0) {
+          router.push(`/fiscal-book/${data[0].id}`);
+          return; // Mantener loading activo mientras navega
+        } else if (count === 0) {
+          setErrorMessage('No se encontró ningún equipo fiscal con el serial indicado.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (isNewSearch) setHasSearched(true);
       setResults(data);
       setTotalCount(count);
       setCurrentPage(page);
@@ -138,9 +164,16 @@ export default function SearchPage() {
             <button
               type="submit"
               disabled={loading}
-              className="h-14 w-full md:w-auto px-8 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-all shadow-sm shadow-blue-500/10 active:scale-[0.95] flex items-center justify-center gap-2 min-w-[140px]"
+              className="h-14 w-full md:w-auto px-8 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-all shadow-sm shadow-blue-500/10 active:scale-[0.95] flex items-center justify-center gap-2 min-w-[150px]"
             >
-              {loading ? "Buscando..." : "Auditar"}
+              {loading ? (
+                <>
+                  <div className="w-[18px] h-[18px] border-2 border-white/80 border-t-white rounded-full animate-spin"></div>
+                  <span>Buscando...</span>
+                </>
+              ) : (
+                "Auditar"
+              )}
             </button>
           </div>
 
@@ -148,21 +181,24 @@ export default function SearchPage() {
 
         {/* Error Message */}
         {errorMessage && (
-          <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              {errorMessage}
+          <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300 relative">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                {errorMessage}
+              </div>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="p-1 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 transition-all flex-shrink-0"
+                title="Cerrar"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <button
-              onClick={() => setErrorMessage(null)}
-              className="absolute top-4 right-4 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
         )}
 
@@ -204,11 +240,11 @@ export default function SearchPage() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="space-y-2 md:space-y-1">
                         <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {printer.businessName}
+                          {printer.businessName || <span className="italic text-slate-400 dark:text-slate-600">Sin asignar</span>}
                         </h3>
                         <div className="flex flex-wrap items-center gap-2 md:gap-3 text-sm">
                           <span className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-100 dark:border-slate-700">
-                            RIF: {printer.rif}
+                            RIF: {printer.rif || <NoData />}
                           </span>
                           <span className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-100 dark:border-slate-700">
                             SN: {printer.serial_fiscal}
@@ -282,11 +318,11 @@ export default function SearchPage() {
                   </div>
                 )}
               </>
-            ) : (
+            ) : !loading && results.length === 0 ? (
               <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-12 text-center text-slate-500 dark:text-slate-400 transition-colors">
-                {loading ? "Buscando en la base de datos central..." : "No se encontraron equipos fiscales con los parámetros indicados. Prueba dejando el campo vacío para ver todos los registros."}
+                No se encontraron equipos fiscales con los parámetros indicados. Prueba dejando el campo vacío para ver todos los registros.
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}

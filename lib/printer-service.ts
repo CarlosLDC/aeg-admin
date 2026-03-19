@@ -8,209 +8,155 @@ import { supabase } from './supabase';
  */
 export const printerService = {
   /**
-   * Fetches a printer by its ID from the real "impresoras" table,
-   * including full service history and annual inspections.
+   * Fetches a printer by its ID via `vista_impresoras` (security-definer view),
+   * then fetches related records (precintos, servicios_tecnicos, inspecciones_anuales)
+   * in parallel. All access is enforced by the view's WHERE clause.
    */
   getPrinterById: async (id: string): Promise<FiscalPrinter | undefined> => {
     if (!supabase) return undefined;
 
     const cleanId = id.replace('mock-p-', '').replace('fp-', '');
 
-    const { data: printer, error } = await supabase
-      .from('impresoras')
-      .select(`
-        *,
-        sucursal:sucursales (
-          *,
-          company:empresas (id, razon_social, rif, tipo_contribuyente)
-        ),
-        modelos_impresora!id_modelo_impresora (*),
-        software!id_software (*),
-        firmware!id_firmware (*),
-        precintos (
-          id, serial, color, estatus, created_at, fecha_instalacion, fecha_retiro
-        ),
-        servicios_tecnicos (
-          *,
-          centro:centros_servicio (*),
-          tecnico:tecnicos (*)
-        ),
-        inspecciones_anuales (
-          *,
-          centro:centros_servicio (*),
-          empleado:empleados (*)
-        ),
-        distribuidora:distribuidoras!id_distribuidora (
-          id,
-          sucursal:sucursales (
-            id, ciudad, estado, direccion, telefono, correo,
-            company:empresas (id, razon_social, rif, tipo_contribuyente)
-          )
-        )
-      `)
-      .eq('id', cleanId)
-      .single();
+    // ── 1. Base data from the security-definer view ──────────────────────────
+    // The view's WHERE clause enforces access (seniat = all, distribuidora = own)
+    const { data: base, error: baseError } = await supabase
+      .from('vista_impresoras')
+      .select('*')
+      .eq('impresora_id', cleanId)
+      .maybeSingle();
 
-    if (error || !printer) {
-      console.error('Error fetching printer details:', error?.message);
+    if (baseError || !base) {
+      console.error('Error fetching from vista_impresoras:', baseError?.message ?? 'Not found or access denied');
       return undefined;
     }
 
-    const technicalReviews: TechnicalReview[] = (printer.servicios_tecnicos || []).map((s: any) => ({
-      id: String(s.id),
-      fechaSolicitud: s.fecha_solicitud || null,
-      serviceCenter: s.centro?.nombre || s.centro?.razon_social || s.centro?.nombre_centro || 'N/A',
-      centerRif: s.centro?.rif || s.centro?.rif_centro || 'N/A',
-      technician: s.tecnico ? (`${s.tecnico.nombre || s.tecnico.first_name || ''} ${s.tecnico.apellido || s.tecnico.last_name || ''}`).trim() || 'N/A' : 'N/A',
-      technicianId: s.tecnico?.cedula || s.tecnico?.id_card || 'N/A',
-      interventionType: s.tipo || 'Mantenimiento Preventivo',
-      date: s.fecha_inicio ? s.fecha_inicio.split('T')[0] : (s.created_at?.split('T')[0] || ''),
-      startTime: s.fecha_inicio ? s.fecha_inicio.split('T')[1]?.substring(0, 5) : null,
-      endTime: s.fecha_fin ? s.fecha_fin.split('T')[1]?.substring(0, 5) : null,
-      zReportStart: String(s.reporte_z_inicial ?? ''),
-      zReportTimestampStart: s.fecha_z_inicial || null,
-      zReportEnd: String(s.reporte_z_final ?? ''),
-      zReportTimestampEnd: s.fecha_z_final || null,
-      sealBroken: s.precinto_violentado || false,
-      sealReplaced: !!s.id_precinto_instalado,
-      currentSealSerial: null, // TODO: Get from precintos table
-      newSealSerial: s.id_precinto_instalado ? 'NEW-SEAL-' + s.id_precinto_instalado : null,
-      description: s.falla_reportada || '',
-      observaciones: s.observaciones || null,
-      costo: s.costo ?? null,
-      urlFotos: s.url_fotos || [],
-      partsReplaced: [],
-    }));
+    // ── 2. Related records in parallel ──────────────────────────────────────
+    const [
+      { data: precintosRows },
+      { data: serviciosRows },
+      { data: inspeccionesRows },
+    ] = await Promise.all([
+      supabase
+        .from('vista_precintos')
+        .select('*')
+        .eq('id_impresora', cleanId),
+      supabase
+        .from('vista_servicios')
+        .select('*')
+        .eq('id_impresora', cleanId),
+      supabase
+        .from('vista_inspecciones')
+        .select('*')
+        .eq('id_impresora', cleanId),
+    ]);
 
-    // If no technical reviews from DB, use mock data
+    // ── 3. Secondary Enrichment for Technical Details ────────────────────────
+    // We fetch descriptive info from vista_tecnicos_centros using the IDs from servicios
+    const techIds = [...new Set((serviciosRows || []).map(s => s.id_tecnico).filter(Boolean))];
+    const inspectorIds = [...new Set((inspeccionesRows || []).map(i => i.id_empleado).filter(Boolean))];
+    const allRelevantUserIds = [...new Set([...techIds, ...inspectorIds])];
+
+    const { data: techDetails } = await supabase
+      .from('vista_tecnicos_centros')
+      .select('*')
+      .in('tecnico_id', allRelevantUserIds);
+
+    // ── 4. Map servicios_tecnicos ────────────────────────────────────────────
+    const technicalReviews: TechnicalReview[] = (serviciosRows || []).map((s: any) => {
+      // Find technician/center info in our enrichment set
+      const techInfo = (techDetails || []).find(t => t.tecnico_id === s.id_tecnico);
+      
+      // Get seal serials from precintosRows
+      const sealRetirado = (precintosRows || []).find(p => p.id === s.id_precinto_retirado);
+      const sealInstalado = (precintosRows || []).find(p => p.id === s.id_precinto_instalado);
+
+      return {
+        id: String(s.id),
+        fechaSolicitud: s.fecha_solicitud || null,
+        serviceCenter: techInfo?.empresa_razon_social || null,
+        centerRif: techInfo?.empresa_rif || null,
+        technician: techInfo?.empleado_nombre || null,
+        technicianId: techInfo?.empleado_cedula || null,
+        interventionType: (s.falla_reportada?.toLowerCase().includes('mantenimiento') ? 'Mantenimiento Preventivo' : 'Reparacion General') as any,
+        date: s.fecha_inicio ? s.fecha_inicio.split('T')[0] : (s.created_at?.split('T')[0] || null),
+        startTime: s.fecha_inicio ? s.fecha_inicio.split('T')[1]?.substring(0, 5) : null,
+        endTime: s.fecha_fin ? s.fecha_fin.split('T')[1]?.substring(0, 5) : null,
+        zReportStart: s.reporte_z_inicial !== null ? String(s.reporte_z_inicial) : null,
+        zReportTimestampStart: s.fecha_z_inicial || null,
+        zReportEnd: s.reporte_z_final !== null ? String(s.reporte_z_final) : null,
+        zReportTimestampEnd: s.fecha_z_final || null,
+        sealBroken: s.precinto_violentado || false,
+        sealReplaced: !!s.id_precinto_instalado,
+        currentSealSerial: sealRetirado?.serial || null,
+        newSealSerial: sealInstalado?.serial || null,
+        description: s.falla_reportada || '',
+        observaciones: s.observaciones || null,
+        costo: s.costo ?? null,
+        urlFotos: s.url_fotos || [],
+        partsReplaced: [],
+      };
+    });
+
     if (technicalReviews.length === 0) {
-      const mockReviews = mockTechnicalReviews.map(review => ({
-        ...review,
-        // Add any missing fields that might be needed
-      }));
-      technicalReviews.push(...mockReviews);
+      technicalReviews.push(...mockTechnicalReviews);
     }
-    
-    const annualInspections: AnnualInspection[] = (printer.inspecciones_anuales || []).map((i: any) => ({
-      id: String(i.id),
-      date: i.fecha_inicio ? i.fecha_inicio.split('T')[0] : (i.created_at?.split('T')[0] || ''),
-      serviceCenter: i.centro?.nombre || i.centro?.razon_social || i.centro?.nombre_centro || 'N/D',
-      centerRif: i.centro?.rif || i.centro?.rif_centro || 'N/D',
-      inspector: i.empleado ? (`${i.empleado.nombre || i.empleado.first_name || ''} ${i.empleado.apellido || i.empleado.last_name || ''}`).trim() || 'N/D' : 'N/D',
-      observations: i.observaciones || i.observations || '',
-      status: (i.fecha_fin && new Date(i.fecha_fin) <= new Date()) ? 'passed' : 'pending',
-      startTime: i.fecha_inicio ? i.fecha_inicio.split('T')[1]?.substring(0, 5) : null,
-      endTime: i.fecha_fin ? i.fecha_fin.split('T')[1]?.substring(0, 5) : null,
-    }));
 
-    // If no annual inspections from DB, use mock data
+    // ── 5. Map inspecciones_anuales ──────────────────────────────────────────
+    const annualInspections: AnnualInspection[] = (inspeccionesRows || []).map((i: any) => {
+      // Find technician/center info in our enrichment set (joining by tecnico_id if available or just center)
+      const inspectorInfo = (techDetails || []).find(t => t.empleado_id === i.id_empleado);
+
+      return {
+        id: String(i.id),
+        date: i.fecha_inicio ? i.fecha_inicio.split('T')[0] : (i.created_at?.split('T')[0] || null),
+        serviceCenter: inspectorInfo?.empresa_razon_social || null,
+        centerRif: inspectorInfo?.empresa_rif || null,
+        inspector: inspectorInfo?.empleado_nombre || null,
+        observations: i.observaciones || null,
+        status: (i.fecha_fin && new Date(i.fecha_fin) <= new Date()) ? 'passed' : 'pending',
+        startTime: i.fecha_inicio ? i.fecha_inicio.split('T')[1]?.substring(0, 5) : null,
+        endTime: i.fecha_fin ? i.fecha_fin.split('T')[1]?.substring(0, 5) : null,
+      };
+    });
+
     if (annualInspections.length === 0) {
-      const mockInspections = mockAnnualInspections.map(inspection => ({
-        ...inspection,
-        // Add any missing fields that might be needed
-      }));
-      annualInspections.push(...mockInspections);
+      annualInspections.push(...mockAnnualInspections);
     }
-
-    // Final mapping
-    const m = Array.isArray(printer.modelos_impresora) ? printer.modelos_impresora[0] : printer.modelos_impresora;
-    const sw = Array.isArray(printer.software) ? printer.software[0] : printer.software;
-    const fw = Array.isArray(printer.firmware) ? printer.firmware[0] : printer.firmware;
 
     return {
-      ...printer,
-      registro_fiscal: printer.registro_fiscal || null,
-      tipo_dispositivo: printer.tipo_dispositivo || 'interno',
-      version_firmware: printer.version_firmware || null,
-      businessName: printer.sucursal?.company?.razon_social || 'SIN ASIGNAR',
-      rif: printer.sucursal?.company?.rif || 'N/A',
-      taxpayerType: printer.sucursal?.company?.tipo_contribuyente || 'N/A',
-      address: printer.sucursal
-        ? `${printer.sucursal.direccion || ''}${printer.sucursal.direccion && printer.sucursal.ciudad ? ', ' : ''}${printer.sucursal.ciudad || ''}${printer.sucursal.ciudad && printer.sucursal.estado ? ', ' : ''}${printer.sucursal.estado || ''}`
-        : 'SIN UBICACIÓN',
-      modelo: m ? {
-        id: m.id,
-        marca: m.marca || 'AEG',
-        codigo_modelo: m.codigo || m.codigo_modelo || m.modelo || String(m.id)
-      } : null,
-      software: sw ? {
-        id: sw.id,
-        nombre: sw.nombre,
-        version: sw.version,
-        created_at: sw.created_at
-      } : null,
-      firmware: fw ? {
-        id: fw.id,
-        version: fw.version,
-        fecha: fw.fecha,
-        descripcion: fw.descripcion,
-        created_at: fw.created_at
-      } : null,
-      sucursal: printer.sucursal ? {
-        ...printer.sucursal,
-        company: printer.sucursal.company
-      } : null,
-      distribuidora: printer.distribuidora ? {
-        id: printer.distribuidora.id,
-        sucursal: printer.distribuidora.sucursal ? {
-          id: printer.distribuidora.sucursal.id,
-          ciudad: printer.distribuidora.sucursal.ciudad,
-          estado: printer.distribuidora.sucursal.estado,
-          direccion: printer.distribuidora.sucursal.direccion || null,
-          telefono: printer.distribuidora.sucursal.telefono || null,
-          correo: printer.distribuidora.sucursal.correo || null,
-          company: printer.distribuidora.sucursal.company,
-        } : null,
-      } : null,
-      precintos: (printer.precintos || []).map((p: any) => ({ ...p, id: String(p.id) })),
+      ...mapViewRowToFiscalPrinter(base),
+      precintos: (precintosRows || []).map((p: any) => ({ ...p, id: String(p.id) })),
       technicalReviews,
       annualInspections,
     };
   },
 
   /**
-   * Searches for printers in the "impresoras" table.
+   * Searches for printers using the security-definer view `vista_impresoras`.
+   * The view's WHERE clause enforces access control (seniat = all rows,
+   * distribuidora = only their own printers).
    */
   async searchPrinters(query: string, page: number = 1, pageSize: number = 10): Promise<{ data: FiscalPrinter[]; count: number }> {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
-    
-    // Detectar si es un RIF o serial fiscal
+
     const isSerial = query.match(/^[A-Z]{3}[0-9]{7}$/);
     const isRif = query.match(/^[VEJPG][0-9]{7,9}$/);
-    
-    console.log('🔍 INICIO BÚSQUEDA DE IMPRESORAS');
-    console.log('📋 Query:', query);
-    console.log('📋 Is Serial:', !!isSerial);
-    console.log('📋 Is RIF:', !!isRif);
-    
-    // Si es RIF, usar el método mejorado
+
+    console.log('🔍 BÚSQUEDA EN vista_impresoras | query:', query, '| serial:', !!isSerial, '| rif:', !!isRif);
+
     if (query && isRif) {
-      console.log('📋 Usando búsqueda directa por RIF');
       return this.searchByRif(query, page, pageSize);
     }
-    
-    // Para seriales y otros casos, usar el método original
+
     let request = supabase
-      .from('impresoras')
-      .select(`
-        *,
-        sucursal:sucursales (
-          *,
-          company:empresas (id, razon_social, rif, tipo_contribuyente)
-        ),
-        modelos_impresora!id_modelo_impresora (*),
-        software!id_software (*),
-        firmware!id_firmware (*)
-      `, { count: 'exact' });
+      .from('vista_impresoras')
+      .select('*', { count: 'exact' });
 
     if (query) {
       if (isSerial) {
-        // Es un serial fiscal, buscar solo por serial
-        console.log('📋 Buscando por serial fiscal:', query);
         request = request.eq('serial_fiscal', query);
       } else {
-        // Formato no válido, devolver resultado vacío
         console.log('📋 Formato no válido:', query);
         return { data: [], count: 0 };
       }
@@ -220,180 +166,162 @@ export const printerService = {
       .order('serial_fiscal', { ascending: true })
       .range(from, to);
 
-    console.log('📊 DATOS OBTENIDOS DE SUPABASE:');
-    console.log('📋 Total impresoras en BD:', count);
-    console.log('📋 Array de impresoras:', printers?.length || 0);
-    console.log('📋 Error:', error);
-
     if (error) {
-      console.error('Error searching printers:', error.message);
+      console.error('Error buscando en vista_impresoras:', error.message);
       return { data: [], count: 0 };
     }
 
-    const mappedData = printers.map(p => {
-      const m = Array.isArray(p.modelos_impresora) ? p.modelos_impresora[0] : p.modelos_impresora;
-      const sw = Array.isArray(p.software) ? p.software[0] : p.software;
-      const fw = Array.isArray(p.firmware) ? p.firmware[0] : p.firmware;
-
-      return {
-        ...p,
-        tipo_dispositivo: p.tipo_dispositivo || 'interno',
-        businessName: p.sucursal?.company?.razon_social || 'SIN ASIGNAR',
-        rif: p.sucursal?.company?.rif || 'N/A',
-        taxpayerType: p.sucursal?.company?.tipo_contribuyente || 'N/A',
-        address: p.sucursal
-          ? `${p.sucursal.direccion || ''}${p.sucursal.direccion && p.sucursal.ciudad ? ', ' : ''}${p.sucursal.ciudad || ''}${p.sucursal.ciudad && p.sucursal.estado ? ', ' : ''}${p.sucursal.estado || ''}`
-          : 'SIN UBICACIÓN',
-        modelo: (() => {
-          const m = Array.isArray(p.modelos_impresora) ? p.modelos_impresora[0] : p.modelos_impresora;
-          if (!m) return null;
-          return {
-            id: m.id,
-            marca: m.marca || 'AEG',
-            codigo_modelo: m.codigo || m.codigo_modelo || m.modelo || String(m.id)
-          };
-        })(),
-        software: sw ? {
-          id: sw.id,
-          nombre: sw.nombre,
-          version: sw.version,
-          created_at: sw.created_at
-        } : null,
-        firmware: fw ? {
-          id: fw.id,
-          version: fw.version,
-          fecha: fw.fecha,
-          descripcion: fw.descripcion,
-          created_at: fw.created_at
-        } : null,
-        sucursal: p.sucursal ? {
-          ...p.sucursal,
-          company: p.sucursal.company
-        } : null,
-        precintos: [],
-        technicalReviews: [],
-        annualInspections: [],
-      };
-    });
-
+    const mappedData = (printers || []).map(mapViewRowToFiscalPrinter);
     return { data: mappedData, count: count || 0 };
   },
   
   /**
-   * Nueva función de búsqueda por RIF mejorada
-   * NOTA: Supabase no soporta WHERE en propiedades anidadas de joins,
-   * por lo que usamos filtrado JavaScript optimizado.
+   * Búsqueda por RIF usando vista_impresoras.
+   * Ahora podemos filtrar directamente en Supabase sobre la columna `empresa_rif`
+   * de la vista (en lugar de traer todo y filtrar en JS).
    */
   searchByRif: async function(rif: string, page: number = 1, pageSize: number = 10): Promise<{ data: FiscalPrinter[]; count: number }> {
-    console.log('🔍 BÚSQUEDA DIRECTA POR RIF - FILTRADO JS CON NORMALIZACIÓN');
-    console.log('📋 RIF buscado:', rif);
-    
-    // Normalizar RIF de búsqueda
     const normalizedRif = rif.replace(/[^A-Z0-9]/g, '').toUpperCase();
-    console.log('📋 RIF normalizado:', normalizedRif);
-    
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
-    
-    // Obtener todas las impresoras con relaciones (sin filtro en BD para evitar problemas de formato)
-    console.log('📋 Obteniendo todas las impresoras con relaciones...');
-    const { data: allPrinters, error } = await supabase
-      .from('impresoras')
-      .select(`
-        *,
-        sucursal:sucursales!inner (
-          *,
-          company:empresas!inner (id, razon_social, rif, tipo_contribuyente)
-        ),
-        modelos_impresora!id_modelo_impresora (*),
-        software!id_software (*),
-        firmware!id_firmware (*)
-      `)
-      .order('serial_fiscal', { ascending: true });
-      
+
+    console.log('🔍 BÚSQUEDA POR RIF en vista_impresoras | RIF normalizado:', normalizedRif);
+
+    const { data, error, count } = await supabase
+      .from('vista_impresoras')
+      .select('*', { count: 'exact' })
+      .ilike('empresa_rif', `%${normalizedRif}%`)
+      .order('serial_fiscal', { ascending: true })
+      .range(from, to);
+
     if (error) {
       console.error('❌ Error en búsqueda por RIF:', error.message);
       return { data: [], count: 0 };
     }
-    
-    console.log(`📋 Total impresoras obtenidas: ${allPrinters?.length || 0}`);
-    
-    // Filtrar en JavaScript con normalización de ambos lados
-    const filteredPrinters = (allPrinters || []).filter(printer => {
-      const dbRif = printer.sucursal?.company?.rif;
-      if (!dbRif) return false;
-      
-      const normalizedDbRif = dbRif.replace(/[^A-Z0-9]/g, '').toUpperCase();
-      const matches = normalizedDbRif === normalizedRif;
-      
-      console.log(`📋 Comparando: "${dbRif}" → "${normalizedDbRif}" vs "${normalizedRif}" → ${matches}`);
-      return matches;
-    });
-    
-    // Eliminar duplicados por ID de impresora
-    const uniqueFilteredPrinters = Array.from(new Map(filteredPrinters.map(p => [p.id, p])).values());
-    
-    console.log(`✅ Impresoras filtradas con RIF ${normalizedRif}: ${filteredPrinters.length}`);
-    console.log(`📋 Impresoras únicas: ${uniqueFilteredPrinters.length} (de ${filteredPrinters.length})`);
-    
-    // Aplicar paginación
-    const paginatedPrinters = uniqueFilteredPrinters.slice(from, from + pageSize);
-    
-    // Debug: mostrar las impresoras que coinciden en esta página
-    if (paginatedPrinters.length > 0) {
-      console.log('📋 Impresoras en página actual:');
-      paginatedPrinters.forEach((printer, index) => {
-        console.log(`  ${index + 1}. ID: ${printer.id}, Serial: ${printer.serial_fiscal}, RIF: ${printer.sucursal?.company?.rif}`);
-      });
-    } else if (uniqueFilteredPrinters.length > 0) {
-      console.log('❌ No hay impresoras en esta página, pero sí hay coincidencias totales');
-    } else {
-      console.log('❌ No se encontraron impresoras con ese RIF');
-    }
-    
-    // Mapear los datos
-    const mappedData = paginatedPrinters.map(p => {
-      const m = Array.isArray(p.modelos_impresora) ? p.modelos_impresora[0] : p.modelos_impresora;
-      const sw = Array.isArray(p.software) ? p.software[0] : p.software;
-      const fw = Array.isArray(p.firmware) ? p.firmware[0] : p.firmware;
 
-      return {
-        ...p,
-        tipo_dispositivo: p.tipo_dispositivo || 'interno',
-        businessName: p.sucursal?.company?.razon_social || 'SIN ASIGNAR',
-        rif: p.sucursal?.company?.rif || 'N/A',
-        taxpayerType: p.sucursal?.company?.tipo_contribuyente || 'N/A',
-        address: p.sucursal
-          ? `${p.sucursal.direccion || ''}${p.sucursal.direccion && p.sucursal.ciudad ? ', ' : ''}${p.sucursal.ciudad || ''}${p.sucursal.ciudad && p.sucursal.estado ? ', ' : ''}${p.sucursal.estado || ''}`
-          : 'SIN UBICACIÓN',
-        modelo: m ? {
-          id: m.id,
-          marca: m.marca || 'AEG',
-          codigo_modelo: m.codigo || m.codigo_modelo || m.modelo || String(m.id)
-        } : null,
-        software: sw ? {
-          id: sw.id,
-          nombre: sw.nombre,
-          version: sw.version,
-          created_at: sw.created_at
-        } : null,
-        firmware: fw ? {
-          id: fw.id,
-          version: fw.version,
-          fecha: fw.fecha,
-          descripcion: fw.descripcion,
-          created_at: fw.created_at
-        } : null,
-        sucursal: p.sucursal ? {
-          ...p.sucursal,
-          company: p.sucursal.company
-        } : null,
-        precintos: [],
-        technicalReviews: [],
-        annualInspections: [],
-      };
-    });
-
-    return { data: mappedData, count: uniqueFilteredPrinters.length };
+    console.log(`✅ Resultados para RIF ${normalizedRif}: ${count ?? 0}`);
+    return { data: (data || []).map(mapViewRowToFiscalPrinter), count: count || 0 };
   }
 };
+
+/**
+ * Mapea una fila plana de `vista_impresoras` al tipo `FiscalPrinter`.
+ * Usa los alias de la vista corregida (con todos los campos completos).
+ */
+function mapViewRowToFiscalPrinter(p: any): FiscalPrinter {
+  // Construir dirección completa desde los campos separados
+  const addressParts = [
+    p.sucursal_direccion,
+    p.sucursal_ciudad,
+    p.sucursal_estado,
+  ].filter(Boolean);
+
+  return {
+    // ── IDs base de impresoras ───────────────────────────────────────────────
+    id: String(p.impresora_id),
+    serial_fiscal: p.serial_fiscal,
+    estatus: p.impresora_estatus,
+    tipo_dispositivo: p.tipo_dispositivo || 'interno',
+    precio_venta_final: p.precio_venta_final ?? null,
+    se_pago: p.se_pago ?? null,
+    registro_fiscal: null,
+    version_firmware: p.impresora_version_reportada ?? null,
+    created_at: p.impresora_created_at ?? null,
+    // IDs FK (ahora expuestos por la vista)
+    id_modelo_impresora: p.id_modelo_impresora ? String(p.id_modelo_impresora) : '',
+    id_sucursal: p.id_sucursal ? String(p.id_sucursal) : null,
+    id_distribuidor: p.id_distribuidora ? String(p.id_distribuidora) : null,
+    id_compra: p.id_compra ? String(p.id_compra) : null,
+    id_software: p.id_software ? String(p.id_software) : null,
+    id_firmware: p.id_firmware ? String(p.id_firmware) : null,
+
+    // ── Datos del contribuyente / cliente ────────────────────────────────────
+    businessName: p.empresa_razon_social ?? null,
+    rif: p.empresa_rif ?? null,
+    taxpayerType: p.empresa_tipo_contribuyente ?? null,
+    address: addressParts.join(', ') || null,
+
+    // ── Sucursal completa ────────────────────────────────────────────────────
+    sucursal: p.sucursal_id
+      ? {
+          id: p.sucursal_id,
+          id_empresa: p.sucursal_id_empresa,
+          ciudad: p.sucursal_ciudad ?? '',
+          estado: p.sucursal_estado ?? '',
+          direccion: p.sucursal_direccion ?? null,
+          telefono: p.sucursal_telefono ?? null,
+          correo: p.sucursal_correo ?? null,
+          es_cliente: p.sucursal_es_cliente ?? false,
+          es_distribuidora: p.sucursal_es_distribuidora ?? false,
+          es_centro_servicio: p.sucursal_es_centro_servicio ?? false,
+          company: {
+            id: p.empresa_id,
+            razon_social: p.empresa_razon_social ?? '',
+            rif: p.empresa_rif ?? '',
+            tipo_contribuyente: p.empresa_tipo_contribuyente ?? '',
+          },
+        }
+      : null,
+
+    // ── Modelo ───────────────────────────────────────────────────────────────
+    modelo: p.modelo_id
+      ? {
+          id: p.modelo_id,
+          marca: p.modelo_marca ?? 'AEG',
+          codigo_modelo: p.modelo_codigo ?? '',
+          providencia: p.modelo_providencia ?? null,
+          fecha_homologacion: p.modelo_fecha_homologacion ?? null,
+          precio: p.modelo_precio ?? 0,
+        }
+      : null,
+
+    // ── Software ─────────────────────────────────────────────────────────────
+    software: p.software_id
+      ? {
+          id: p.software_id,
+          nombre: p.software_nombre ?? '',
+          version: p.software_version ?? '',
+          created_at: p.software_created_at ?? '',
+        }
+      : null,
+
+    // ── Firmware ─────────────────────────────────────────────────────────────
+    firmware: p.firmware_id
+      ? {
+          id: p.firmware_id,
+          version: p.firmware_version_catalogo ?? '',
+          fecha: p.firmware_fecha ?? '',
+          descripcion: p.firmware_descripcion ?? null,
+          created_at: p.firmware_created_at ?? '',
+        }
+      : null,
+
+    // ── Distribuidora (enajenador) completa ──────────────────────────────────
+    distribuidora: p.distribuidora_id_ref
+      ? {
+          id: p.distribuidora_id_ref,
+          sucursal: p.dist_sucursal_id
+            ? {
+                id: p.dist_sucursal_id,
+                ciudad: p.dist_sucursal_ciudad ?? '',
+                estado: p.dist_sucursal_estado ?? '',
+                direccion: p.dist_sucursal_direccion ?? null,
+                telefono: p.dist_sucursal_telefono ?? null,
+                correo: p.dist_sucursal_correo ?? null,
+                company: {
+                  id: p.dist_empresa_id,
+                  razon_social: p.dist_empresa_razon_social ?? '',
+                  rif: p.dist_empresa_rif ?? '',
+                  tipo_contribuyente: p.dist_empresa_tipo_contribuyente ?? '',
+                },
+              }
+            : null,
+        }
+      : null,
+
+    // ── Relaciones que se cargan por separado ────────────────────────────────
+    precintos: [],
+    technicalReviews: [],
+    annualInspections: [],
+  };
+}

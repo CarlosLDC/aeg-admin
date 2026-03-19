@@ -48,23 +48,23 @@ export interface Sucursal {
 export interface TechnicalReview {
   id: string;
   fechaSolicitud?: string | null;
-  serviceCenter: string;
-  centerRif: string;
-  technician: string;
-  technicianId: string;
+  serviceCenter: string | null;
+  centerRif: string | null;
+  technician: string | null;
+  technicianId: string | null;
   interventionType: 'Mantenimiento Preventivo' | 'Mantenimiento Correctivo' | 'Cambio de Alicuota' | 'Reparacion General' | 'Inicializacion';
-  date: string; // = fecha_inicio
+  date: string | null; // = fecha_inicio
   startTime?: string | null;
   endTime?: string | null;
-  zReportStart: string;
+  zReportStart: string | null;
   zReportTimestampStart?: string | null;
-  zReportEnd: string;
+  zReportEnd: string | null;
   zReportTimestampEnd?: string | null;
   sealBroken: boolean;
   sealReplaced: boolean;
   currentSealSerial?: string | null;
   newSealSerial?: string | null;
-  description: string; // = falla_reportada
+  description: string | null; // = falla_reportada
   observaciones?: string | null;
   costo?: number | null;
   urlFotos?: string[];
@@ -73,14 +73,14 @@ export interface TechnicalReview {
 
 export interface AnnualInspection {
   id: string;
-  date: string; // = fecha_inicio
-  serviceCenter: string;
-  centerRif: string;
-  inspector: string;
+  date: string | null; // = fecha_inicio
+  serviceCenter: string | null;
+  centerRif: string | null;
+  inspector: string | null;
   tipo?: string | null;
   precintoViolentado?: boolean;
   status: 'passed' | 'pending';
-  observations: string;
+  observations: string | null;
   urlFotos?: string[];
   pdfUrl?: string;
   startTime?: string | null;

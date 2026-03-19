@@ -572,18 +572,17 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     {profile?.rol === 'distribuidora' && (
                         <Link
                             href={`/fiscal-book/${id}/${viewMode === 'tech' ? 'new-service' : 'new-inspection'}`}
-                            className="flex justify-center items-center h-7 px-3 gap-2 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700"
+                            className="flex justify-center items-center h-7 w-7 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700"
                             title={viewMode === 'tech' ? 'Añadir Servicio' : 'Añadir Inspección'}
                         >
                             <PlusIcon size={14} />
-                            <span className="text-[10px] font-bold uppercase tracking-tight">Nuevo</span>
                         </Link>
                     )}
 
                     <button
                         onClick={downloadPDF}
                         disabled={isDownloading || records.length === 0}
-                        className="flex justify-center items-center h-7 px-3 gap-2 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none"
+                        className="flex justify-center items-center h-7 w-7 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none"
                         title="Descargar PDF"
                     >
                         {isDownloading ? (
@@ -591,7 +590,6 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                         ) : (
                             <DownloadIcon size={14} />
                         )}
-                        <span className="text-[10px] font-bold uppercase tracking-tight">PDF</span>
                     </button>
                 </div>
             )}

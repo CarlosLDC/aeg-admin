@@ -78,42 +78,20 @@ export default function RootLayout({
       }
     };
 
-    const initSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          // If local session is corrupted or refresh token missing, forcefully sign out to clear storage
-          if (error.message.includes('Refresh Token')) {
-            // Silence this specific error as it's common when session expires or is cleared
-            await supabase.auth.signOut();
-            setUser(null);
-            setProfile(null);
-          } else {
-            console.error("Auth session error:", error.message);
-          }
-        } else {
-          setUser(session?.user ?? null);
-          if (session?.user) {
-            await fetchProfile(session.user.id);
-          } else {
-            setProfile(null);
-          }
-        }
-      } catch (e) {
-        console.error("Auth init exception:", e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    initSession();
-
+    let isInitialCallback = true;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         await fetchProfile(session.user.id);
       } else {
         setProfile(null);
+      }
+
+      // Reduce lock-request churn by avoiding extra getSession() calls.
+      // We rely on the auth listener for the initial state.
+      if (isInitialCallback) {
+        isInitialCallback = false;
+        setLoading(false);
       }
     });
 
@@ -148,10 +126,17 @@ export default function RootLayout({
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      router.refresh();
+      // "local" guarantees we clear the local tokens even if the refresh token
+      // is already expired, which otherwise can leave the UI in a stuck state.
+      await supabase.auth.signOut({ scope: 'local' });
     } catch (err) {
       console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
+      router.push('/login');
+      router.refresh();
     }
   };
 

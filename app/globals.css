@@ -26,6 +26,50 @@
   --border: #1e293b; /* slate-800 */
 }
 
+/* Normalize native form controls across browsers.
+   This avoids the need for `@tailwindcss/forms` while keeping dark mode intact. */
+input,
+select,
+textarea {
+  /* Helps native widgets (date/time pickers) choose the right theme. */
+  color-scheme: light;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  color-scheme: dark;
+}
+
+/* Make "text-like" controls render consistently (different browsers otherwise
+   apply different native appearances/paddings). */
+:where(input[type="text"], input[type="email"], input[type="password"], input[type="search"], input[type="tel"], input[type="url"], input:not([type]), textarea) {
+  -webkit-appearance: none;
+  appearance: none;
+  resize: vertical;
+}
+
+/* Unified select chevron across browsers.
+   Works with both your Tailwind `appearance-none` usage and plain selects. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-inline-end: 2.25rem; /* make room for the chevron */
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    calc(100% - 1rem) 50%,
+    calc(100% - 0.65rem) 50%;
+  background-size:
+    0.35rem 0.35rem,
+    0.35rem 0.35rem;
+  background-repeat: no-repeat;
+}
+
 body {
   @apply bg-background text-foreground antialiased min-h-screen selection:bg-blue-500 selection:text-white transition-colors duration-300;
 }

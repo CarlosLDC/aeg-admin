@@ -166,7 +166,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Inspector Responsable</label>
               <select
                 required
-                className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-emerald-500 transition-all font-medium text-slate-900 dark:text-white appearance-none"
+                className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white appearance-none"
                 value={idEmpleado}
                 onChange={(e) => setIdEmpleado(e.target.value)}
                 disabled={loadingTecnicos}
@@ -203,13 +203,13 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
                 <input
                   type="date"
                   required
-                  className="w-2/3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-emerald-500 transition-all font-medium text-slate-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+                  className="w-2/3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
                   value={fechaInicioDate}
                   onChange={(e) => setFechaInicioDate(e.target.value)}
                 />
                 <TimeInput
                   required
-                  focusClassName="focus:border-emerald-500"
+                  focusClassName="focus:border-blue-500"
                   value={fechaInicioTime}
                   onChange={(e) => setFechaInicioTime(e.target.value)}
                 />
@@ -221,13 +221,13 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
                 <input
                   type="date"
                   required
-                  className="w-2/3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-emerald-500 transition-all font-medium text-slate-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+                  className="w-2/3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
                   value={fechaFinDate}
                   onChange={(e) => setFechaFinDate(e.target.value)}
                 />
                 <TimeInput
                   required
-                  focusClassName="focus:border-emerald-500"
+                  focusClassName="focus:border-blue-500"
                   value={fechaFinTime}
                   onChange={(e) => setFechaFinTime(e.target.value)}
                 />
@@ -240,7 +240,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
             <textarea
               required
               rows={3}
-              className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-emerald-500 transition-all font-medium text-slate-900 dark:text-white placeholder:text-slate-400"
+              className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white placeholder:text-slate-400"
               placeholder="Describa a detalle las observaciones y resultados de la inspección..."
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value)}

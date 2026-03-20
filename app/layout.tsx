@@ -63,6 +63,8 @@ export default function RootLayout({
 
   // 2. Initial Session Sync
   useEffect(() => {
+    const lastProfileUserIdRef = { current: null as string | null };
+
     const fetchProfile = async (userId: string) => {
       try {
         const { data, error } = await supabase
@@ -79,11 +81,25 @@ export default function RootLayout({
     };
 
     let isInitialCallback = true;
+    const timeoutId = window.setTimeout(() => {
+      // Fallback: if the auth callback gets aborted/throttled, we don't want the UI
+      // stuck forever behind "Cargando sesión...".
+      if (isInitialCallback) {
+        isInitialCallback = false;
+        setLoading(false);
+      }
+    }, 6000);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        const userId = session.user.id;
+        if (lastProfileUserIdRef.current !== userId) {
+          lastProfileUserIdRef.current = userId;
+          await fetchProfile(userId);
+        }
       } else {
+        lastProfileUserIdRef.current = null;
         setProfile(null);
       }
 
@@ -95,7 +111,10 @@ export default function RootLayout({
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      window.clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, []);
 
   // 3. Navigation Protection

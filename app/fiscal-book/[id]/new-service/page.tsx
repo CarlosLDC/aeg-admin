@@ -309,7 +309,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
             <div className="space-y-4">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Técnico Responsable</label>
               {tecnicoInfo ? (
-                <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-700 dark:text-slate-300">
+                <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500">
                   {tecnicoInfo.empleado_nombre} (V{tecnicoInfo.empleado_cedula?.replace(/-/g, '')})
                 </div>
               ) : (

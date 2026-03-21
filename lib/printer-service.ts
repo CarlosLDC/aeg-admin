@@ -1,4 +1,4 @@
-import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto, Software, Firmware, Sucursal, Distribuidora, mockTechnicalReviews, mockAnnualInspections } from './mock-data';
+import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto, Software, Firmware, Sucursal, Distribuidora } from './mock-data';
 import { supabase } from './supabase';
 import { fetchTecnicosCentroByIds, fetchDirectorioEmpleadosByIds } from './tecnico-centro';
 
@@ -111,11 +111,7 @@ export const printerService = {
       };
     });
 
-    if (technicalReviews.length === 0) {
-      technicalReviews.push(...mockTechnicalReviews);
-    }
-
-    // ── 5. Map inspecciones_anuales (esquema: fecha única, sin inicio/fin) ───
+    // --- 5. Map inspecciones_anuales (esquema: fecha única, sin inicio/fin) ---
     const annualInspections: AnnualInspection[] = (inspeccionesRows || []).map((i: any) => {
       const inspectorInfo = directorioInspectores.find(d => d.empleado_id === i.id_empleado);
       const fechaRaw = i.fecha ?? i.created_at;
@@ -139,10 +135,6 @@ export const printerService = {
         endTime: null,
       };
     });
-
-    if (annualInspections.length === 0) {
-      annualInspections.push(...mockAnnualInspections);
-    }
 
     return {
       ...mapViewRowToFiscalPrinter(base),

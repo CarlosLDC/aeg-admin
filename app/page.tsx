@@ -88,9 +88,9 @@ export default function SearchPage() {
       setTotalCount(count);
       setCurrentPage(page);
 
-      // Scroll to results top on page change
-      if (!isNewSearch && resultsRef.current) {
-        resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Scroll to top on page change
+      if (!isNewSearch) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (error) {
       console.error("Error searching printers:", error);

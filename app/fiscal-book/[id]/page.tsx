@@ -90,6 +90,11 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
         };
         loadData();
     }, [id, authLoading, profile?.rol_usuario, tecnicoDistribuidoraId]);
+    
+    // Auto-scroll to top on page or tab change
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [currentPage, viewMode]);
 
     if (authLoading || loading) {
         return (

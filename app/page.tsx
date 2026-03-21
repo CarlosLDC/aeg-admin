@@ -265,7 +265,7 @@ export default function SearchPage() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="space-y-2 md:space-y-1">
                         <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {printer.businessName || <span className="italic text-slate-400 dark:text-slate-600">Sin asignar</span>}
+                          {printer.businessName || <span className="italic text-slate-400 dark:text-slate-600">N/D</span>}
                         </h3>
                         <div className="flex flex-wrap items-center gap-2 md:gap-3 text-sm">
                           <span className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-100 dark:border-slate-700">

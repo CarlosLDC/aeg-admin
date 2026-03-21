@@ -65,7 +65,7 @@ const getActiveSealSerial = (printer: FiscalPrinter) => {
 
 export default function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const { profile, loading: authLoading, tecnicoSucursalId } = useUserProfile();
+    const { profile, loading: authLoading, tecnicoDistribuidoraId } = useUserProfile();
     const [printer, setPrinter] = useState<FiscalPrinter | undefined>(undefined);
     const [loading, setLoading] = useState(true);
 
@@ -82,14 +82,14 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
         const loadData = async () => {
             setLoading(true);
             const data = await printerService.getPrinterById(id, {
-                restrictToSucursalId:
-                    profile?.rol_usuario === 'tecnico' ? tecnicoSucursalId ?? null : undefined,
+                restrictToDistribuidoraId:
+                    profile?.rol_usuario === 'tecnico' ? tecnicoDistribuidoraId ?? null : undefined,
             });
             setPrinter(data);
             setLoading(false);
         };
         loadData();
-    }, [id, authLoading, profile?.rol_usuario, tecnicoSucursalId]);
+    }, [id, authLoading, profile?.rol_usuario, tecnicoDistribuidoraId]);
 
     if (authLoading || loading) {
         return (

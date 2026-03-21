@@ -24,9 +24,9 @@ export const UserProfileContext = createContext<{
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
-  /** Sucursal del empleado vinculado; solo aplica si `rol_usuario === 'tecnico'`. */
-  tecnicoSucursalId: number | null;
-}>({ user: null, profile: null, loading: true, tecnicoSucursalId: null });
+  /** Distribuidora del empleado vinculado; solo aplica si `rol_usuario === 'tecnico'`. */
+  tecnicoDistribuidoraId: number | null;
+}>({ user: null, profile: null, loading: true, tecnicoDistribuidoraId: null });
 
 export function useUserProfile() {
   return useContext(UserProfileContext);
@@ -41,7 +41,7 @@ export default function RootLayout({
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [tecnicoSucursalId, setTecnicoSucursalId] = useState<number | null>(null);
+  const [tecnicoDistribuidoraId, setTecnicoDistribuidoraId] = useState<number | null>(null);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -80,22 +80,25 @@ export default function RootLayout({
         if (error) throw error;
         setProfile(data);
 
-        let sucursalId: number | null = null;
+        let distribuidoraId: number | null = null;
         if (data?.rol_usuario === 'tecnico' && data.id_empleado != null) {
+          console.log('[DEBUG] Consultando vista_directorio_empleados para empleado_id:', data.id_empleado);
           const { data: dirRow, error: dirErr } = await supabase
             .from('vista_directorio_empleados')
-            .select('sucursal_id')
+            .select('empleado_id, distribuidora_id, sucursal_id, empleado_nombre')
             .eq('empleado_id', data.id_empleado)
             .maybeSingle();
-          if (!dirErr && dirRow?.sucursal_id != null) {
-            sucursalId = Number(dirRow.sucursal_id);
+          console.log('[DEBUG] Resultado dirRow:', JSON.stringify(dirRow), 'error:', dirErr);
+          if (!dirErr && dirRow?.distribuidora_id != null) {
+            distribuidoraId = Number(dirRow.distribuidora_id);
           }
+          console.log('[DEBUG] Técnico distribuidoraId final:', distribuidoraId);
         }
-        setTecnicoSucursalId(sucursalId);
+        setTecnicoDistribuidoraId(distribuidoraId);
       } catch (err) {
         console.error("[Auth] Error fetching profile:", err);
         setProfile(null);
-        setTecnicoSucursalId(null);
+        setTecnicoDistribuidoraId(null);
       }
     };
 
@@ -120,7 +123,7 @@ export default function RootLayout({
       } else {
         lastProfileUserIdRef.current = null;
         setProfile(null);
-        setTecnicoSucursalId(null);
+        setTecnicoDistribuidoraId(null);
       }
 
       // Reduce lock-request churn by avoiding extra getSession() calls.
@@ -173,7 +176,7 @@ export default function RootLayout({
     } finally {
       setUser(null);
       setProfile(null);
-      setTecnicoSucursalId(null);
+      setTecnicoDistribuidoraId(null);
       setLoading(false);
       router.push('/login');
       router.refresh();
@@ -224,7 +227,7 @@ export default function RootLayout({
           </header>
 
           <div className="flex-1 w-full flex flex-col">
-            <UserProfileContext.Provider value={{ user, profile, loading, tecnicoSucursalId }}>
+            <UserProfileContext.Provider value={{ user, profile, loading, tecnicoDistribuidoraId }}>
               {loading && pathname !== '/login' ? (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="animate-pulse text-muted font-medium">Cargando sesión...</div>

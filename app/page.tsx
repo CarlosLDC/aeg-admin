@@ -5,6 +5,7 @@ import { FiscalPrinter } from '@/lib/mock-data';
 import { printerService } from '@/lib/printer-service';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useUserProfile } from '@/app/layout';
 
 const NoData = () => (
   <span className="text-slate-400 dark:text-slate-600 text-sm italic font-medium normal-case">N/D</span>
@@ -12,6 +13,7 @@ const NoData = () => (
 
 export default function SearchPage() {
   const router = useRouter();
+  const { profile, loading: authLoading, tecnicoSucursalId } = useUserProfile();
   
   // State
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +37,8 @@ export default function SearchPage() {
   };
 
   const performSearch = async (page: number, isNewSearch: boolean = false) => {
+    if (authLoading) return;
+
     setLoading(true);
     
     // Si es nueva búsqueda, limpiamos estados previos para evitar flasheos
@@ -44,7 +48,23 @@ export default function SearchPage() {
     }
 
     try {
-      const { data, count } = await printerService.searchPrinters(searchTerm, page, PAGE_SIZE);
+      if (profile?.rol_usuario === 'tecnico' && tecnicoSucursalId == null) {
+        setErrorMessage(
+          'Su perfil técnico no tiene sucursal vinculada en el directorio de empleados. No puede listar equipos.'
+        );
+        setHasSearched(true);
+        setResults([]);
+        setTotalCount(0);
+        setLoading(false);
+        return;
+      }
+
+      const searchOpts =
+        profile?.rol_usuario === 'tecnico' && tecnicoSucursalId != null
+          ? { sucursalId: tecnicoSucursalId }
+          : undefined;
+
+      const { data, count } = await printerService.searchPrinters(searchTerm, page, PAGE_SIZE, searchOpts);
 
       // Interceptar resultados exactos o vacíos para búsqueda por serial
       if (isNewSearch && searchType === 'serial' && searchTerm.trim() !== '') {
@@ -114,6 +134,11 @@ export default function SearchPage() {
         <p className="text-slate-500 dark:text-slate-400 text-lg md:text-xl max-w-2xl mx-auto font-light leading-relaxed">
           Verificación segura del historial de mantenimiento y estatus operativo en la red AEG, autorizada por el SENIAT.
         </p>
+        {profile?.rol_usuario === 'tecnico' && tecnicoSucursalId != null && (
+          <p className="text-sm text-amber-700 dark:text-amber-400/90 max-w-2xl mx-auto font-medium">
+            Su sesión técnica solo muestra equipos asociados a su sucursal.
+          </p>
+        )}
       </div>
 
       {/* Search Container */}

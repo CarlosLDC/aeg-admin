@@ -160,7 +160,11 @@ export interface FiscalPrinter {
   registro_fiscal?: string | null;
   tipo_dispositivo: 'interno' | 'externo';
   version_firmware?: string | null;
-  created_at?: string | null; // Fecha de instalación
+  /** Alta/registro del registro en sistema */
+  created_at?: string | null;
+  /** Fecha de instalación en sitio (vista_impresoras.fecha_instalacion) */
+  fecha_instalacion?: string | null;
+  direccion_mac?: string | null;
 
   // UI Fallback props (Transient)
   businessName: string | null;

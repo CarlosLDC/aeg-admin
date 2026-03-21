@@ -10,19 +10,23 @@ import { User } from '@supabase/supabase-js';
 
 const inter = Inter({ subsets: ['latin'] });
 
+/** Alineado con `public.perfiles` (rol_usuario, id_empleado, …) */
 export type UserProfile = {
   id: number;
   id_usuario: string;
-  rol: 'seniat' | 'distribuidora' | 'cliente' | 'admin';
-  id_distribuidora: number | null;
-  nombre_completo: string | null;
+  correo: string | null;
+  created_at?: string;
+  rol_usuario: 'admin' | 'tecnico' | 'seniat' | null;
+  id_empleado: number | null;
 };
 
 export const UserProfileContext = createContext<{
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
-}>({ user: null, profile: null, loading: true });
+  /** Sucursal del empleado vinculado; solo aplica si `rol_usuario === 'tecnico'`. */
+  tecnicoSucursalId: number | null;
+}>({ user: null, profile: null, loading: true, tecnicoSucursalId: null });
 
 export function useUserProfile() {
   return useContext(UserProfileContext);
@@ -37,6 +41,7 @@ export default function RootLayout({
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [tecnicoSucursalId, setTecnicoSucursalId] = useState<number | null>(null);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -74,9 +79,23 @@ export default function RootLayout({
           .maybeSingle();
         if (error) throw error;
         setProfile(data);
+
+        let sucursalId: number | null = null;
+        if (data?.rol_usuario === 'tecnico' && data.id_empleado != null) {
+          const { data: dirRow, error: dirErr } = await supabase
+            .from('vista_directorio_empleados')
+            .select('sucursal_id')
+            .eq('empleado_id', data.id_empleado)
+            .maybeSingle();
+          if (!dirErr && dirRow?.sucursal_id != null) {
+            sucursalId = Number(dirRow.sucursal_id);
+          }
+        }
+        setTecnicoSucursalId(sucursalId);
       } catch (err) {
         console.error("[Auth] Error fetching profile:", err);
         setProfile(null);
+        setTecnicoSucursalId(null);
       }
     };
 
@@ -101,6 +120,7 @@ export default function RootLayout({
       } else {
         lastProfileUserIdRef.current = null;
         setProfile(null);
+        setTecnicoSucursalId(null);
       }
 
       // Reduce lock-request churn by avoiding extra getSession() calls.
@@ -153,6 +173,7 @@ export default function RootLayout({
     } finally {
       setUser(null);
       setProfile(null);
+      setTecnicoSucursalId(null);
       setLoading(false);
       router.push('/login');
       router.refresh();
@@ -203,7 +224,7 @@ export default function RootLayout({
           </header>
 
           <div className="flex-1 w-full flex flex-col">
-            <UserProfileContext.Provider value={{ user, profile, loading }}>
+            <UserProfileContext.Provider value={{ user, profile, loading, tecnicoSucursalId }}>
               {loading && pathname !== '/login' ? (
                 <div className="flex-1 flex items-center justify-center">
                   <div className="animate-pulse text-muted font-medium">Cargando sesión...</div>

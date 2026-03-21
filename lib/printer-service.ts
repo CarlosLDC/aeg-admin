@@ -1,24 +1,28 @@
 import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto, Software, Firmware, Sucursal, Distribuidora, mockTechnicalReviews, mockAnnualInspections } from './mock-data';
 import { supabase } from './supabase';
+import { fetchTecnicosCentroByIds, fetchDirectorioEmpleadosByIds } from './tecnico-centro';
 
 /**
  * Service to handle printer data fetching.
- * Fully REAL: impresoras, sucursales, empresas, precintos,
- * servicios_tecnicos, inspecciones_anuales — all from Supabase.
+ * Fully REAL: impresoras (vista), precintos, servicios_tecnicos,
+ * inspecciones_anuales — tablas base; técnicos/inspectores enriquecidos en app.
  */
+export type GetPrinterByIdOptions = {
+  /** Rol técnico: limitar a esta sucursal; `null` = empleado sin sucursal (sin acceso). */
+  restrictToSucursalId?: number | null;
+};
+
 export const printerService = {
   /**
-   * Fetches a printer by its ID via `vista_impresoras` (security-definer view),
+   * Fetches a printer by its ID via `vista_impresoras` (security invoker),
    * then fetches related records (precintos, servicios_tecnicos, inspecciones_anuales)
-   * in parallel. All access is enforced by the view's WHERE clause.
+   * in parallel. RLS en tablas base / vista aplica según políticas en BD.
    */
-  getPrinterById: async (id: string): Promise<FiscalPrinter | undefined> => {
+  getPrinterById: async (id: string, options?: GetPrinterByIdOptions): Promise<FiscalPrinter | undefined> => {
     if (!supabase) return undefined;
 
     const cleanId = id.replace('mock-p-', '').replace('fp-', '');
 
-    // ── 1. Base data from the security-definer view ──────────────────────────
-    // The view's WHERE clause enforces access (seniat = all, distribuidora = own)
     const { data: base, error: baseError } = await supabase
       .from('vista_impresoras')
       .select('*')
@@ -30,36 +34,31 @@ export const printerService = {
       return undefined;
     }
 
+    if (options?.restrictToSucursalId !== undefined) {
+      if (options.restrictToSucursalId === null) return undefined;
+      const sid = base.sucursal_id != null ? Number(base.sucursal_id) : NaN;
+      if (sid !== options.restrictToSucursalId) return undefined;
+    }
+
     // ── 2. Related records in parallel ──────────────────────────────────────
     const [
       { data: precintosRows },
       { data: serviciosRows },
       { data: inspeccionesRows },
     ] = await Promise.all([
-      supabase
-        .from('vista_precintos')
-        .select('*')
-        .eq('id_impresora', cleanId),
-      supabase
-        .from('vista_servicios')
-        .select('*')
-        .eq('id_impresora', cleanId),
-      supabase
-        .from('vista_inspecciones')
-        .select('*')
-        .eq('id_impresora', cleanId),
+      supabase.from('precintos').select('*').eq('id_impresora', cleanId),
+      supabase.from('servicios_tecnicos').select('*').eq('id_impresora', cleanId),
+      supabase.from('inspecciones_anuales').select('*').eq('id_impresora', cleanId),
     ]);
 
-    // ── 3. Secondary Enrichment for Technical Details ────────────────────────
-    // We fetch descriptive info from vista_tecnicos_centros using the IDs from servicios
-    const techIds = [...new Set((serviciosRows || []).map(s => s.id_tecnico).filter(Boolean))];
-    const inspectorIds = [...new Set((inspeccionesRows || []).map(i => i.id_empleado).filter(Boolean))];
-    const allRelevantUserIds = [...new Set([...techIds, ...inspectorIds])];
+    // ── 3. Enriquecimiento: técnicos (servicios) y directorio (inspectores) ──
+    const techIds = [...new Set((serviciosRows || []).map(s => s.id_tecnico).filter(Boolean))] as number[];
+    const inspectorIds = [...new Set((inspeccionesRows || []).map(i => i.id_empleado).filter(Boolean))] as number[];
 
-    const { data: techDetails } = await supabase
-      .from('vista_tecnicos_centros')
-      .select('*')
-      .in('tecnico_id', allRelevantUserIds);
+    const [techDetails, directorioInspectores] = await Promise.all([
+      fetchTecnicosCentroByIds(supabase, techIds),
+      fetchDirectorioEmpleadosByIds(supabase, inspectorIds),
+    ]);
 
     // ── 4. Map servicios_tecnicos ────────────────────────────────────────────
     const technicalReviews: TechnicalReview[] = (serviciosRows || []).map((s: any) => {
@@ -101,21 +100,28 @@ export const printerService = {
       technicalReviews.push(...mockTechnicalReviews);
     }
 
-    // ── 5. Map inspecciones_anuales ──────────────────────────────────────────
+    // ── 5. Map inspecciones_anuales (esquema: fecha única, sin inicio/fin) ───
     const annualInspections: AnnualInspection[] = (inspeccionesRows || []).map((i: any) => {
-      // Find technician/center info in our enrichment set (joining by tecnico_id if available or just center)
-      const inspectorInfo = (techDetails || []).find(t => t.empleado_id === i.id_empleado);
+      const inspectorInfo = directorioInspectores.find(d => d.empleado_id === i.id_empleado);
+      const fechaRaw = i.fecha ?? i.created_at;
+      const dateStr =
+        typeof fechaRaw === 'string' ? fechaRaw.split('T')[0] : fechaRaw != null ? String(fechaRaw) : null;
+      const fechaFinInspeccion = fechaRaw ? new Date(fechaRaw) : null;
+      const passed =
+        fechaFinInspeccion != null && !isNaN(fechaFinInspeccion.getTime())
+          ? fechaFinInspeccion <= new Date()
+          : false;
 
       return {
         id: String(i.id),
-        date: i.fecha_inicio ? i.fecha_inicio.split('T')[0] : (i.created_at?.split('T')[0] || null),
-        serviceCenter: inspectorInfo?.empresa_razon_social || null,
-        centerRif: inspectorInfo?.empresa_rif || null,
-        inspector: inspectorInfo?.empleado_nombre || null,
-        observations: i.observaciones || null,
-        status: (i.fecha_fin && new Date(i.fecha_fin) <= new Date()) ? 'passed' : 'pending',
-        startTime: i.fecha_inicio ? i.fecha_inicio.split('T')[1]?.substring(0, 5) : null,
-        endTime: i.fecha_fin ? i.fecha_fin.split('T')[1]?.substring(0, 5) : null,
+        date: dateStr,
+        serviceCenter: inspectorInfo?.empresa_razon_social ?? null,
+        centerRif: inspectorInfo?.empresa_rif ?? null,
+        inspector: inspectorInfo?.empleado_nombre ?? null,
+        observations: i.observaciones ?? null,
+        status: passed ? 'passed' : 'pending',
+        startTime: null,
+        endTime: null,
       };
     });
 
@@ -132,11 +138,15 @@ export const printerService = {
   },
 
   /**
-   * Searches for printers using the security-definer view `vista_impresoras`.
-   * The view's WHERE clause enforces access control (seniat = all rows,
-   * distribuidora = only their own printers).
+   * Búsqueda sobre `vista_impresoras`.
+   * `sucursalId`: si se pasa, solo impresoras de esa sucursal (rol técnico).
    */
-  async searchPrinters(query: string, page: number = 1, pageSize: number = 10): Promise<{ data: FiscalPrinter[]; count: number }> {
+  async searchPrinters(
+    query: string,
+    page: number = 1,
+    pageSize: number = 10,
+    opts?: { sucursalId?: number | null }
+  ): Promise<{ data: FiscalPrinter[]; count: number }> {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
@@ -146,12 +156,16 @@ export const printerService = {
     console.log('🔍 BÚSQUEDA EN vista_impresoras | query:', query, '| serial:', !!isSerial, '| rif:', !!isRif);
 
     if (query && isRif) {
-      return this.searchByRif(query, page, pageSize);
+      return this.searchByRif(query, page, pageSize, opts);
     }
 
     let request = supabase
       .from('vista_impresoras')
       .select('*', { count: 'exact' });
+
+    if (opts?.sucursalId != null) {
+      request = request.eq('sucursal_id', opts.sucursalId);
+    }
 
     if (query) {
       if (isSerial) {
@@ -180,19 +194,28 @@ export const printerService = {
    * Ahora podemos filtrar directamente en Supabase sobre la columna `empresa_rif`
    * de la vista (en lugar de traer todo y filtrar en JS).
    */
-  searchByRif: async function(rif: string, page: number = 1, pageSize: number = 10): Promise<{ data: FiscalPrinter[]; count: number }> {
+  searchByRif: async function (
+    rif: string,
+    page: number = 1,
+    pageSize: number = 10,
+    opts?: { sucursalId?: number | null }
+  ): Promise<{ data: FiscalPrinter[]; count: number }> {
     const normalizedRif = rif.replace(/[^A-Z0-9]/g, '').toUpperCase();
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
     console.log('🔍 BÚSQUEDA POR RIF en vista_impresoras | RIF normalizado:', normalizedRif);
 
-    const { data, error, count } = await supabase
+    let req = supabase
       .from('vista_impresoras')
       .select('*', { count: 'exact' })
-      .ilike('empresa_rif', `%${normalizedRif}%`)
-      .order('serial_fiscal', { ascending: true })
-      .range(from, to);
+      .ilike('empresa_rif', `%${normalizedRif}%`);
+
+    if (opts?.sucursalId != null) {
+      req = req.eq('sucursal_id', opts.sucursalId);
+    }
+
+    const { data, error, count } = await req.order('serial_fiscal', { ascending: true }).range(from, to);
 
     if (error) {
       console.error('❌ Error en búsqueda por RIF:', error.message);
@@ -227,7 +250,9 @@ function mapViewRowToFiscalPrinter(p: any): FiscalPrinter {
     registro_fiscal: null,
     version_firmware: p.impresora_version_reportada ?? null,
     created_at: p.impresora_created_at ?? null,
-    // IDs FK (ahora expuestos por la vista)
+    fecha_instalacion: p.fecha_instalacion ?? null,
+    direccion_mac: p.direccion_mac ?? null,
+    // IDs FK (expuestos por la vista)
     id_modelo_impresora: p.id_modelo_impresora ? String(p.id_modelo_impresora) : '',
     id_sucursal: p.id_sucursal ? String(p.id_sucursal) : null,
     id_distribuidor: p.id_distribuidora ? String(p.id_distribuidora) : null,

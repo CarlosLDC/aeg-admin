@@ -2,6 +2,7 @@
 
 import { useState, use, useEffect, useRef } from 'react';
 import { useUserProfile } from '@/app/layout';
+import { canRegistrarServiciosEInspecciones } from '@/lib/roles';
 import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto } from '@/lib/mock-data';
 import { printerService } from '@/lib/printer-service';
 import Link from 'next/link';
@@ -64,7 +65,7 @@ const getActiveSealSerial = (printer: FiscalPrinter) => {
 
 export default function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const { profile } = useUserProfile();
+    const { profile, loading: authLoading, tecnicoSucursalId } = useUserProfile();
     const [printer, setPrinter] = useState<FiscalPrinter | undefined>(undefined);
     const [loading, setLoading] = useState(true);
 
@@ -76,16 +77,21 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
     const printRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        if (authLoading) return;
+
         const loadData = async () => {
             setLoading(true);
-            const data = await printerService.getPrinterById(id);
+            const data = await printerService.getPrinterById(id, {
+                restrictToSucursalId:
+                    profile?.rol_usuario === 'tecnico' ? tecnicoSucursalId ?? null : undefined,
+            });
             setPrinter(data);
             setLoading(false);
         };
         loadData();
-    }, [id]);
+    }, [id, authLoading, profile?.rol_usuario, tecnicoSucursalId]);
 
-    if (loading) {
+    if (authLoading || loading) {
         return (
             <main className="container mx-auto px-4 py-32 max-w-4xl text-center flex-1 flex flex-col justify-center">
                 <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -303,7 +309,15 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             drawField('Modelo', printer.modelo?.codigo_modelo, margin, y); y += 6;
             const activeSeal = getActiveSealSerial(printer);
             doc.text(`Serial del Precinto: ${activeSeal}`, margin, y); y += 6;
-            drawField('Fecha de Instalación', printer.created_at ? new Date(printer.created_at).toLocaleDateString('es-VE') : null, margin, y); y += 6;
+            drawField(
+              'Fecha de Instalación',
+              (printer.fecha_instalacion || printer.created_at)
+                ? new Date((printer.fecha_instalacion || printer.created_at) as string).toLocaleDateString('es-VE')
+                : null,
+              margin,
+              y
+            );
+            y += 6;
             doc.text(`Tipo de Dispositivo Fiscal: ${printer.tipo_dispositivo}`, margin, y); y += 6;
             drawField('Versión del Firmware', truncateVersion(printer.version_firmware), margin, y); y += 10;
 
@@ -569,7 +583,7 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
             {/* Actions (Add/Download) - Hidden in 'Inf. Base' as requested */}
             {viewMode !== 'info' && (
                 <div className="flex items-center bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm group/actions">
-                    {profile?.rol === 'distribuidora' && (
+                    {canRegistrarServiciosEInspecciones(profile) && (
                         <Link
                             href={`/fiscal-book/${id}/${viewMode === 'tech' ? 'new-service' : 'new-inspection'}`}
                             className="flex justify-center items-center h-7 w-7 rounded-lg transition-colors text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700"
@@ -913,7 +927,7 @@ function InfoPage({ printer }: { printer: FiscalPrinter }) {
                         <div>
                             <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Instalación</label>
                             <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">
-                                {printer.created_at ? new Date(printer.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : <NoData />}
+                                {(printer.fecha_instalacion || printer.created_at) ? new Date((printer.fecha_instalacion || printer.created_at) as string).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : <NoData />}
                             </p>
                         </div>
                         <div>

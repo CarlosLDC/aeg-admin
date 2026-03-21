@@ -4,7 +4,10 @@ import { useState, use, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { TimeInput } from '@/components/time-input';
+import { fetchDirectorioEmpleados, type DirectorioEmpleadoRow } from '@/lib/tecnico-centro';
+import { useUserProfile } from '@/app/layout';
+import { canRegistrarServiciosEInspecciones } from '@/lib/roles';
+import { printerService } from '@/lib/printer-service';
 
 function ArrowLeft({ size, className }: { size: number; className?: string }) {
   return (
@@ -17,69 +20,46 @@ function ArrowLeft({ size, className }: { size: number; className?: string }) {
 export default function NewAnnualInspection({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { profile, loading: authLoading, tecnicoSucursalId } = useUserProfile();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // View Data
-  const [tecnicosData, setTecnicosData] = useState<any[]>([]);
+  const [inspectoresData, setInspectoresData] = useState<DirectorioEmpleadoRow[]>([]);
   const [loadingTecnicos, setLoadingTecnicos] = useState(true);
   const [printer, setPrinter] = useState<any>(null);
   const [loadingPrinter, setLoadingPrinter] = useState(true);
 
   // Form state
   const [idEmpleado, setIdEmpleado] = useState('');
-  const [idCentroServicio, setIdCentroServicio] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [precintoViolentado, setPrecintoViolentado] = useState(false);
-  
-  const [fechaInicioDate, setFechaInicioDate] = useState('');
-  const [fechaInicioTime, setFechaInicioTime] = useState('');
-  const [fechaFinDate, setFechaFinDate] = useState('');
-  const [fechaFinTime, setFechaFinTime] = useState('');
+  const [fechaInspeccion, setFechaInspeccion] = useState('');
 
-  // Fetch tecnicos/inspectores on mount
+  // Inspectores desde directorio de empleados (filtrado por rol en app si aplica)
   useEffect(() => {
-    const fetchTecnicos = async () => {
+    if (authLoading) return;
+
+    const fetchInspectores = async () => {
       setLoadingTecnicos(true);
-      const { data, error } = await supabase
-        .from('vista_tecnicos_centros')
-        .select('*');
-      
-      if (!error && data) {
-        setTecnicosData(data);
-      }
+      const rows = await fetchDirectorioEmpleados(supabase);
+      setInspectoresData(rows);
       setLoadingTecnicos(false);
     };
 
     const fetchPrinter = async () => {
       setLoadingPrinter(true);
-      const { data, error } = await supabase
-        .from('vista_impresoras')
-        .select('*')
-        .eq('impresora_id', id)
-        .maybeSingle();
-      
-      if (data) {
-        setPrinter(data);
-      }
+      const row = await printerService.getPrinterById(id, {
+        restrictToSucursalId:
+          profile?.rol_usuario === 'tecnico' ? tecnicoSucursalId ?? null : undefined,
+      });
+      setPrinter(row ?? null);
       setLoadingPrinter(false);
     };
 
-    fetchTecnicos();
+    fetchInspectores();
     fetchPrinter();
-  }, [id]);
-
-  // Auto-fill centro de servicio when empleado changes
-  useEffect(() => {
-    if (idEmpleado && tecnicosData.length > 0) {
-      const selectedTecnico = tecnicosData.find(t => t.empleado_id.toString() === idEmpleado);
-      if (selectedTecnico) {
-        setIdCentroServicio(selectedTecnico.centro_servicio_id.toString());
-      }
-    } else {
-      setIdCentroServicio('');
-    }
-  }, [idEmpleado, tecnicosData]);
+  }, [id, authLoading, profile?.rol_usuario, tecnicoSucursalId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,38 +71,24 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
       if (!user) throw new Error('No se encontró una sesión activa.');
 
       // Ownership Check
-      const { data: profile } = await supabase
-        .from('perfiles')
-        .select('*')
-        .eq('id_usuario', user.id)
-        .single();
-      
-      if (profile?.rol === 'distribuidora' && profile?.id_distribuidora != printer?.id_distribuidora) {
-        throw new Error(`Este equipo (${printer?.serial_fiscal || 'N/A'}) no pertenece a su distribuidora.`);
-      }
-
       // Clean ID for database
       const cleanId = Number(id.replace('mock-p-', '').replace('fp-', ''));
 
-      // Strict Validation for NOT NULL fields
-      if (!idEmpleado || !idCentroServicio || !fechaInicioDate || !fechaInicioTime || !fechaFinDate || !fechaFinTime) {
+      if (!idEmpleado || !fechaInspeccion) {
         throw new Error('Todos los campos marcados con (*) son obligatorios según el reglamento.');
       }
 
       const numEmpleado = Number(idEmpleado);
-      const numCentro = Number(idCentroServicio);
 
       const { error: insertError } = await supabase
         .from('inspecciones_anuales')
         .insert([{
           id_impresora: cleanId,
           id_empleado: numEmpleado,
-          id_centro_servicio: numCentro,
           observaciones: observaciones || null,
           precinto_violentado: precintoViolentado,
-          fecha_inicio: new Date(`${fechaInicioDate}T${fechaInicioTime}`).toISOString(),
-          fecha_fin: new Date(`${fechaFinDate}T${fechaFinTime}`).toISOString(),
           url_fotos: [],
+          fecha: fechaInspeccion,
         }]);
 
       if (insertError) throw insertError;
@@ -141,6 +107,45 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
       setLoading(false);
     }
   };
+
+  if (!authLoading && profile && !canRegistrarServiciosEInspecciones(profile)) {
+    return (
+      <main className="container mx-auto px-4 py-12 max-w-3xl flex-1 flex flex-col">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-8 text-center">
+          <p className="text-slate-800 dark:text-slate-200 font-semibold mb-4">
+            Solo usuarios con rol <strong>técnico</strong> pueden registrar inspecciones en el libro fiscal.
+          </p>
+          <Link href={`/fiscal-book/${id}`} className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
+            Volver al libro fiscal
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (authLoading || loadingPrinter) {
+    return (
+      <main className="container mx-auto px-4 py-32 max-w-3xl flex-1 flex flex-col justify-center text-center">
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-muted font-medium">Cargando datos del equipo…</p>
+      </main>
+    );
+  }
+
+  if (!printer) {
+    return (
+      <main className="container mx-auto px-4 py-12 max-w-3xl flex-1 flex flex-col">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-8 text-center">
+          <p className="text-slate-800 dark:text-slate-200 font-semibold mb-4">
+            No se encontró el equipo o no tiene permiso para registrar inspecciones en esta sucursal.
+          </p>
+          <Link href={`/fiscal-book/${id}`} className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
+            Volver al libro fiscal
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="container mx-auto px-4 py-12 max-w-3xl flex-1 flex flex-col">
@@ -174,65 +179,38 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
                 <option value="" disabled>
                   {loadingTecnicos ? 'Cargando inspectores...' : 'Seleccione un inspector...'}
                 </option>
-                {tecnicosData.map(t => (
+                {inspectoresData.map(t => (
                   <option key={t.empleado_id} value={t.empleado_id}>
-                    {t.empleado_nombre} (V-{t.empleado_cedula}) - {t.empresa_razon_social}
+                    {t.empleado_nombre} (V-{t.empleado_cedula}) — {t.empresa_razon_social}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Centro de Servicio</label>
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Sucursal / empresa (según directorio)</label>
               <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500 cursor-not-allowed">
-                {idCentroServicio 
+                {idEmpleado
                   ? (() => {
-                      const selected = tecnicosData.find(t => t.centro_servicio_id.toString() === idCentroServicio);
-                      return selected ? `${selected.empresa_razon_social} - ${selected.sucursal_ciudad}` : idCentroServicio;
+                      const selected = inspectoresData.find(t => t.empleado_id.toString() === idEmpleado);
+                      return selected
+                        ? `${selected.empresa_razon_social ?? '—'} — ${selected.sucursal_ciudad ?? '—'}`
+                        : '—';
                     })()
-                  : 'Seleccione un inspector primero'
-                }
+                  : 'Seleccione un inspector primero'}
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Inicio de Inspección</label>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  required
-                  className="w-2/3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
-                  value={fechaInicioDate}
-                  onChange={(e) => setFechaInicioDate(e.target.value)}
-                />
-                <TimeInput
-                  required
-                  focusClassName="focus:border-blue-500"
-                  value={fechaInicioTime}
-                  onChange={(e) => setFechaInicioTime(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Fin de Inspección</label>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  required
-                  className="w-2/3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
-                  value={fechaFinDate}
-                  onChange={(e) => setFechaFinDate(e.target.value)}
-                />
-                <TimeInput
-                  required
-                  focusClassName="focus:border-blue-500"
-                  value={fechaFinTime}
-                  onChange={(e) => setFechaFinTime(e.target.value)}
-                />
-              </div>
-            </div>
+          <div className="space-y-4">
+            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Fecha de inspección</label>
+            <input
+              type="date"
+              required
+              className="w-full max-w-xs px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-60 hover:[&::-webkit-calendar-picker-indicator]:opacity-100"
+              value={fechaInspeccion}
+              onChange={(e) => setFechaInspeccion(e.target.value)}
+            />
           </div>
 
           <div className="space-y-4">

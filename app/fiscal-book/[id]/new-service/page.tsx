@@ -2,6 +2,10 @@
 
 import { useState, use, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { fetchTecnicosCentro, type TecnicoCentroRow } from '@/lib/tecnico-centro';
+import { useUserProfile } from '@/app/layout';
+import { canRegistrarServiciosEInspecciones } from '@/lib/roles';
+import { printerService } from '@/lib/printer-service';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TimeInput } from '@/components/time-input';
@@ -17,11 +21,12 @@ function ArrowLeft({ size, className }: { size: number; className?: string }) {
 export default function NewTechnicalService({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { profile, loading: authLoading, tecnicoSucursalId } = useUserProfile();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // View Data
-  const [tecnicosData, setTecnicosData] = useState<any[]>([]);
+  const [tecnicosData, setTecnicosData] = useState<TecnicoCentroRow[]>([]);
   const [loadingTecnicos, setLoadingTecnicos] = useState(true);
   const [printer, setPrinter] = useState<any>(null);
   const [loadingPrinter, setLoadingPrinter] = useState(true);
@@ -59,38 +64,52 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
   const [idPrecintoInstalado, setIdPrecintoInstalado] = useState('');
   const [precintosDisponibles, setPrecintosDisponibles] = useState<any[]>([]);
   const [loadingPrecintos, setLoadingPrecintos] = useState(false);
+  /** Precinto activo en la impresora (vista ya no expone id_precinto_actual). */
+  const [idPrecintoActual, setIdPrecintoActual] = useState<number | null>(null);
 
-  // Fetch tecnicos on mount
+  // Precinto actualmente instalado (para retiro al reemplazar)
   useEffect(() => {
+    const loadPrecintoActivo = async () => {
+      const cleanId = Number(id.replace('mock-p-', '').replace('fp-', ''));
+      if (!Number.isFinite(cleanId) || cleanId <= 0) {
+        setIdPrecintoActual(null);
+        return;
+      }
+      const { data } = await supabase
+        .from('precintos')
+        .select('id')
+        .eq('id_impresora', cleanId)
+        .eq('estatus', 'en_impresora')
+        .maybeSingle();
+      setIdPrecintoActual(data?.id ?? null);
+    };
+    loadPrecintoActivo();
+  }, [id]);
+
+  // Fetch tecnicos + impresora (técnico: solo si la sucursal coincide)
+  useEffect(() => {
+    if (authLoading) return;
+
     const fetchTecnicos = async () => {
       setLoadingTecnicos(true);
-      const { data, error } = await supabase
-        .from('vista_tecnicos_centros')
-        .select('*');
-      
-      if (!error && data) {
-        setTecnicosData(data);
-      }
+      const rows = await fetchTecnicosCentro(supabase);
+      setTecnicosData(rows);
       setLoadingTecnicos(false);
     };
 
     const fetchPrinter = async () => {
       setLoadingPrinter(true);
-      const { data, error } = await supabase
-        .from('vista_impresoras')
-        .select('*')
-        .eq('impresora_id', id)
-        .maybeSingle();
-      
-      if (data) {
-        setPrinter(data);
-      }
+      const row = await printerService.getPrinterById(id, {
+        restrictToSucursalId:
+          profile?.rol_usuario === 'tecnico' ? tecnicoSucursalId ?? null : undefined,
+      });
+      setPrinter(row ?? null);
       setLoadingPrinter(false);
     };
 
     fetchTecnicos();
     fetchPrinter();
-  }, [id]);
+  }, [id, authLoading, profile?.rol_usuario, tecnicoSucursalId]);
 
   // Auto-fill centro de servicio when tecnico changes
   useEffect(() => {
@@ -104,17 +123,17 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
     }
   }, [idTecnico, tecnicosData]);
 
-  // Fetch available seals for replacement
+  // Todos los precintos en estatus inventario (RLS acota en servidor si aplica).
   useEffect(() => {
     const fetchPrecintos = async () => {
-      if (!sealReplaced || !printer?.id_distribuidora) return;
-      
+      if (!sealReplaced) return;
+
       setLoadingPrecintos(true);
       const { data, error } = await supabase
-        .from('vista_precintos')
+        .from('precintos')
         .select('*')
-        .eq('id_distribuidora', printer.id_distribuidora)
-        .eq('estatus', 'en_inventario'); // Only seals in stock
+        .eq('estatus', 'en_inventario')
+        .order('serial', { ascending: true });
 
       if (!error && data) {
         setPrecintosDisponibles(data);
@@ -123,7 +142,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
     };
 
     fetchPrecintos();
-  }, [sealReplaced, printer?.id_distribuidora]);
+  }, [sealReplaced]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,17 +153,6 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('No se encontró una sesión activa.');
-      }
-
-      // Ownership Check
-      const { data: profile } = await supabase
-        .from('perfiles')
-        .select('*')
-        .eq('id_usuario', user.id)
-        .single();
-      
-      if (profile?.rol === 'distribuidora' && profile?.id_distribuidora != printer?.id_distribuidora) {
-        throw new Error(`Este equipo (${printer?.serial_fiscal || 'N/A'}) no pertenece a su distribuidora.`);
       }
 
       // Clean ID for database
@@ -184,7 +192,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
           fecha_z_final: new Date(`${fechaZFinalDate}T${fechaZFinalTime}`).toISOString(),
           // New Precise IDs
           id_precinto_instalado: sealReplaced ? Number(idPrecintoInstalado) : null,
-          id_precinto_retirado: sealReplaced ? (printer?.id_precinto_actual || null) : null,
+          id_precinto_retirado: sealReplaced ? idPrecintoActual : null,
         }]);
 
       if (insertError) throw insertError;
@@ -203,6 +211,45 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
       setLoading(false);
     }
   };
+
+  if (!authLoading && profile && !canRegistrarServiciosEInspecciones(profile)) {
+    return (
+      <main className="container mx-auto px-4 py-12 max-w-3xl flex-1 flex flex-col">
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-8 text-center">
+          <p className="text-slate-800 dark:text-slate-200 font-semibold mb-4">
+            Solo usuarios con rol <strong>técnico</strong> pueden registrar servicios en el libro fiscal.
+          </p>
+          <Link href={`/fiscal-book/${id}`} className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
+            Volver al libro fiscal
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  if (authLoading || loadingPrinter) {
+    return (
+      <main className="container mx-auto px-4 py-32 max-w-3xl flex-1 flex flex-col justify-center text-center">
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-muted font-medium">Cargando datos del equipo…</p>
+      </main>
+    );
+  }
+
+  if (!printer) {
+    return (
+      <main className="container mx-auto px-4 py-12 max-w-3xl flex-1 flex flex-col">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-8 text-center">
+          <p className="text-slate-800 dark:text-slate-200 font-semibold mb-4">
+            No se encontró el equipo o no tiene permiso para registrar servicios en esta sucursal.
+          </p>
+          <Link href={`/fiscal-book/${id}`} className="text-blue-600 dark:text-blue-400 font-bold hover:underline">
+            Volver al libro fiscal
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="container mx-auto px-4 py-12 max-w-3xl flex-1 flex flex-col">

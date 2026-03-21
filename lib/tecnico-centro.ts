@@ -13,6 +13,7 @@ export type TecnicoCentroRow = {
   empresa_razon_social: string | null;
   empresa_rif: string | null;
   sucursal_ciudad: string | null;
+  sucursal_estado: string | null;
 };
 
 type EmpRow = { id: number; nombre: string | null; cedula: string | null };
@@ -47,6 +48,7 @@ function mapTecnicoRow(row: TecnicoJoinRow): TecnicoCentroRow {
     empresa_razon_social: comp?.razon_social ?? null,
     empresa_rif: comp?.rif ?? null,
     sucursal_ciudad: suc?.ciudad ?? null,
+    sucursal_estado: null, // No disponible en el formato antiguo
   };
 }
 
@@ -64,37 +66,59 @@ const TECNICOS_SELECT = `
   )
 `;
 
-/**
- * Lista todos los técnicos con datos de empleado y centro (para formularios).
- */
 export async function fetchTecnicosCentro(supabase: SupabaseClient): Promise<TecnicoCentroRow[]> {
-  const { data, error } = await supabase.from('tecnicos').select(TECNICOS_SELECT);
-
-  if (error) {
-    console.error('fetchTecnicosCentro:', error.message);
-    return [];
-  }
-
-  return ((data as unknown) as TecnicoJoinRow[] | null)?.map(mapTecnicoRow) ?? [];
+  // Ahora todo está en la vista unificada
+  const rows = await fetchDirectorioEmpleados(supabase);
+  
+  // Solo los que tienen tecnico_id
+  return rows
+    .filter(r => r.tecnico_id != null)
+    .map(r => ({
+      tecnico_id: r.tecnico_id!,
+      centro_servicio_id: r.centro_servicio_id || 0,
+      empleado_id: r.empleado_id,
+      empleado_nombre: r.empleado_nombre || '',
+      empleado_cedula: r.empleado_cedula,
+      empresa_razon_social: r.empresa_razon_social,
+      empresa_rif: r.empresa_rif,
+      sucursal_ciudad: r.sucursal_ciudad,
+      sucursal_estado: r.sucursal_estado,
+    }));
 }
 
-/**
- * Subconjunto por IDs de técnico (p. ej. enriquecimiento del libro fiscal).
- */
 export async function fetchTecnicosCentroByIds(
   supabase: SupabaseClient,
   tecnicoIds: number[]
 ): Promise<TecnicoCentroRow[]> {
   if (tecnicoIds.length === 0) return [];
 
-  const { data, error } = await supabase.from('tecnicos').select(TECNICOS_SELECT).in('id', tecnicoIds);
+  // Usamos el listado completo desde la vista unificada
+  const rows = await fetchDirectorioEmpleados(supabase);
+  
+  // Buscamos coincidencia en tecnico_id O en empleado_id (fallback robusto)
+  return rows
+    .filter(r => 
+      (r.tecnico_id != null && tecnicoIds.includes(r.tecnico_id)) || 
+      (r.empleado_id != null && tecnicoIds.includes(r.empleado_id))
+    )
+    .map(r => {
+      // Si el tecnico_id es el que buscamos, lo usamos; si no, el empleado_id es el que actúa como técnico
+      const effectiveId = (r.tecnico_id != null && tecnicoIds.includes(r.tecnico_id)) 
+        ? r.tecnico_id 
+        : r.empleado_id;
 
-  if (error) {
-    console.error('fetchTecnicosCentroByIds:', error.message);
-    return [];
-  }
-
-  return ((data as unknown) as TecnicoJoinRow[] | null)?.map(mapTecnicoRow) ?? [];
+      return {
+        tecnico_id: effectiveId,
+        centro_servicio_id: r.centro_servicio_id || 1, // Fallback al centro 1 si es null
+        empleado_id: r.empleado_id,
+        empleado_nombre: r.empleado_nombre || '',
+        empleado_cedula: r.empleado_cedula,
+        empresa_razon_social: r.empresa_razon_social,
+        empresa_rif: r.empresa_rif,
+        sucursal_ciudad: r.sucursal_ciudad,
+        sucursal_estado: r.sucursal_estado,
+      };
+    });
 }
 
 export type DirectorioEmpleadoRow = {
@@ -104,6 +128,11 @@ export type DirectorioEmpleadoRow = {
   empresa_razon_social: string | null;
   empresa_rif: string | null;
   sucursal_ciudad: string | null;
+  sucursal_estado: string | null;
+  centro_servicio_id: number | null;
+  distribuidora_id: number | null;
+  tecnico_id: number | null;
+  distribuidor_id: number | null;
 };
 
 /**
@@ -118,7 +147,12 @@ export async function fetchDirectorioEmpleados(
     empleado_cedula,
     empresa_razon_social,
     empresa_rif,
-    sucursal_ciudad
+    sucursal_ciudad,
+    sucursal_estado,
+    centro_servicio_id,
+    distribuidora_id,
+    tecnico_id,
+    distribuidor_id
   `);
 
   if (error) {
@@ -144,7 +178,12 @@ export async function fetchDirectorioEmpleadosByIds(
     empleado_cedula,
     empresa_razon_social,
     empresa_rif,
-    sucursal_ciudad
+    sucursal_ciudad,
+    sucursal_estado,
+    centro_servicio_id,
+    distribuidora_id,
+    tecnico_id,
+    distribuidor_id
   `
     )
     .in('empleado_id', empleadoIds);

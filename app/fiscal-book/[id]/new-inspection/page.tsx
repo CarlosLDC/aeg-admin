@@ -20,7 +20,7 @@ function ArrowLeft({ size, className }: { size: number; className?: string }) {
 export default function NewAnnualInspection({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { profile, loading: authLoading, tecnicoSucursalId } = useUserProfile();
+  const { profile, loading: authLoading, tecnicoDistribuidoraId } = useUserProfile();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +35,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
   const [observaciones, setObservaciones] = useState('');
   const [precintoViolentado, setPrecintoViolentado] = useState(false);
   const [fechaInspeccion, setFechaInspeccion] = useState('');
+  const [inspectorInfo, setInspectorInfo] = useState<DirectorioEmpleadoRow | null>(null);
 
   // Inspectores desde directorio de empleados (filtrado por rol en app si aplica)
   useEffect(() => {
@@ -44,14 +45,24 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
       setLoadingTecnicos(true);
       const rows = await fetchDirectorioEmpleados(supabase);
       setInspectoresData(rows);
+      
+      // Auto-seleccionar el inspector actual si es técnico
+      if (profile?.rol_usuario === 'tecnico' && profile.id_empleado) {
+        const currentInspector = rows.find(t => t.empleado_id === profile.id_empleado);
+        if (currentInspector) {
+          setIdEmpleado(currentInspector.empleado_id.toString());
+          setInspectorInfo(currentInspector);
+        }
+      }
+      
       setLoadingTecnicos(false);
     };
 
     const fetchPrinter = async () => {
       setLoadingPrinter(true);
       const row = await printerService.getPrinterById(id, {
-        restrictToSucursalId:
-          profile?.rol_usuario === 'tecnico' ? tecnicoSucursalId ?? null : undefined,
+        restrictToDistribuidoraId:
+          profile?.rol_usuario === 'tecnico' ? tecnicoDistribuidoraId ?? null : undefined,
       });
       setPrinter(row ?? null);
       setLoadingPrinter(false);
@@ -59,7 +70,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
 
     fetchInspectores();
     fetchPrinter();
-  }, [id, authLoading, profile?.rol_usuario, tecnicoSucursalId]);
+  }, [id, authLoading, profile?.rol_usuario, tecnicoDistribuidoraId, profile?.id_empleado]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +90,9 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
       }
 
       const numEmpleado = Number(idEmpleado);
+
+      const inspector = inspectorInfo || inspectoresData.find(t => t.empleado_id === numEmpleado);
+      // const idCentroServicio = inspector?.centro_servicio_id; // Columna no existe en la tabla según el esquema proveído
 
       const { error: insertError } = await supabase
         .from('inspecciones_anuales')
@@ -169,35 +183,31 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
           <div className="grid grid-cols-1 gap-6">
             <div className="space-y-4">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Inspector Responsable</label>
-              <select
-                required
-                className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white appearance-none"
-                value={idEmpleado}
-                onChange={(e) => setIdEmpleado(e.target.value)}
-                disabled={loadingTecnicos}
-              >
-                <option value="" disabled>
-                  {loadingTecnicos ? 'Cargando inspectores...' : 'Seleccione un inspector...'}
-                </option>
-                {inspectoresData.map(t => (
-                  <option key={t.empleado_id} value={t.empleado_id}>
-                    {t.empleado_nombre} (V-{t.empleado_cedula}) — {t.empresa_razon_social}
-                  </option>
-                ))}
-              </select>
+              {inspectorInfo ? (
+                <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500">
+                  {inspectorInfo.empleado_nombre} (V{inspectorInfo.empleado_cedula?.replace(/-/g, '')})
+                </div>
+              ) : (
+                <div className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-medium text-slate-400 animate-pulse">
+                  Cargando información del inspector...
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Sucursal / empresa (según directorio)</label>
-              <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500 cursor-not-allowed">
-                {idEmpleado
-                  ? (() => {
-                      const selected = inspectoresData.find(t => t.empleado_id.toString() === idEmpleado);
-                      return selected
-                        ? `${selected.empresa_razon_social ?? '—'} — ${selected.sucursal_ciudad ?? '—'}`
-                        : '—';
-                    })()
-                  : 'Seleccione un inspector primero'}
+              <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500">
+                {inspectorInfo
+                  ? `${inspectorInfo.empresa_razon_social} - ${inspectorInfo.sucursal_estado?.toUpperCase()}, ${inspectorInfo.sucursal_ciudad}`
+                  : idEmpleado
+                    ? (() => {
+                        const selected = inspectoresData.find(t => t.empleado_id.toString() === idEmpleado);
+                        return selected
+                          ? `${selected.empresa_razon_social} - ${selected.sucursal_estado?.toUpperCase()}, ${selected.sucursal_ciudad}`
+                          : '—';
+                      })()
+                    : 'Seleccione un inspector primero'
+                }
               </div>
             </div>
           </div>

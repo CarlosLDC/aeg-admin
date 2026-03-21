@@ -8,8 +8,8 @@ import { fetchTecnicosCentroByIds, fetchDirectorioEmpleadosByIds } from './tecni
  * inspecciones_anuales — tablas base; técnicos/inspectores enriquecidos en app.
  */
 export type GetPrinterByIdOptions = {
-  /** Rol técnico: limitar a esta sucursal; `null` = empleado sin sucursal (sin acceso). */
-  restrictToSucursalId?: number | null;
+  /** Rol técnico: limitar a esta distribuidora; `null` = empleado sin distribuidora (sin acceso). */
+  restrictToDistribuidoraId?: number | null;
 };
 
 export const printerService = {
@@ -34,10 +34,12 @@ export const printerService = {
       return undefined;
     }
 
-    if (options?.restrictToSucursalId !== undefined) {
-      if (options.restrictToSucursalId === null) return undefined;
-      const sid = base.sucursal_id != null ? Number(base.sucursal_id) : NaN;
-      if (sid !== options.restrictToSucursalId) return undefined;
+    if (options?.restrictToDistribuidoraId !== undefined) {
+      console.log('[DEBUG] getPrinterById filter - distribuidoraId:', options.restrictToDistribuidoraId, 'printer.distribuidora_id_ref:', base.distribuidora_id_ref);
+      if (options.restrictToDistribuidoraId === null) return undefined;
+      const did = base.distribuidora_id_ref != null ? Number(base.distribuidora_id_ref) : NaN;
+      console.log('[DEBUG] Comparing:', did, '!==', options.restrictToDistribuidoraId, '=', did !== options.restrictToDistribuidoraId);
+      if (did !== options.restrictToDistribuidoraId) return undefined;
     }
 
     // ── 2. Related records in parallel ──────────────────────────────────────
@@ -66,7 +68,20 @@ export const printerService = {
       const techInfo = (techDetails || []).find(t => t.tecnico_id === s.id_tecnico);
       
       // Get seal serials from precintosRows
-      const sealRetirado = (precintosRows || []).find(p => p.id === s.id_precinto_retirado);
+      let sealRetirado = (precintosRows || []).find(p => p.id === s.id_precinto_retirado);
+      
+      // Smart Fallback: si no hay id_precinto_retirado, buscamos el que estaba "en_impresora" en ese momento
+      if (!sealRetirado && s.fecha_inicio) {
+        const serviceTime = new Date(s.fecha_inicio).getTime();
+        sealRetirado = (precintosRows || []).find(p => {
+          const installTime = p.fecha_instalacion ? new Date(p.fecha_instalacion).getTime() : new Date(p.created_at).getTime();
+          const retireTime = p.fecha_retiro ? new Date(p.fecha_retiro).getTime() : Infinity;
+          // El precinto debió ser instalado antes o durante el inicio del servicio
+          // y retirado después del inicio (o no haber sido retirado nunca)
+          return installTime <= (serviceTime + 60000) && retireTime >= (serviceTime - 60000);
+        });
+      }
+
       const sealInstalado = (precintosRows || []).find(p => p.id === s.id_precinto_instalado);
 
       return {
@@ -139,13 +154,13 @@ export const printerService = {
 
   /**
    * Búsqueda sobre `vista_impresoras`.
-   * `sucursalId`: si se pasa, solo impresoras de esa sucursal (rol técnico).
+   * `distribuidoraId`: si se pasa, solo impresoras de esa distribuidora (rol técnico).
    */
   async searchPrinters(
     query: string,
     page: number = 1,
     pageSize: number = 10,
-    opts?: { sucursalId?: number | null }
+    opts?: { distribuidoraId?: number | null }
   ): Promise<{ data: FiscalPrinter[]; count: number }> {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
@@ -163,8 +178,9 @@ export const printerService = {
       .from('vista_impresoras')
       .select('*', { count: 'exact' });
 
-    if (opts?.sucursalId != null) {
-      request = request.eq('sucursal_id', opts.sucursalId);
+    if (opts?.distribuidoraId != null) {
+      console.log('[DEBUG] searchPrinters filter - distribuidoraId:', opts.distribuidoraId);
+      request = request.eq('distribuidora_id_ref', opts.distribuidoraId);
     }
 
     if (query) {
@@ -198,7 +214,7 @@ export const printerService = {
     rif: string,
     page: number = 1,
     pageSize: number = 10,
-    opts?: { sucursalId?: number | null }
+    opts?: { distribuidoraId?: number | null }
   ): Promise<{ data: FiscalPrinter[]; count: number }> {
     const normalizedRif = rif.replace(/[^A-Z0-9]/g, '').toUpperCase();
     const from = (page - 1) * pageSize;
@@ -211,8 +227,8 @@ export const printerService = {
       .select('*', { count: 'exact' })
       .ilike('empresa_rif', `%${normalizedRif}%`);
 
-    if (opts?.sucursalId != null) {
-      req = req.eq('sucursal_id', opts.sucursalId);
+    if (opts?.distribuidoraId != null) {
+      req = req.eq('distribuidora_id_ref', opts.distribuidoraId);
     }
 
     const { data, error, count } = await req.order('serial_fiscal', { ascending: true }).range(from, to);

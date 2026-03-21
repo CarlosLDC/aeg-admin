@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { fetchTecnicosCentro, type TecnicoCentroRow } from '@/lib/tecnico-centro';
+import { fetchTecnicosCentro, fetchDirectorioEmpleados, type TecnicoCentroRow, type DirectorioEmpleadoRow } from '@/lib/tecnico-centro';
 import { useUserProfile } from '@/app/layout';
 import { canRegistrarServiciosEInspecciones } from '@/lib/roles';
 import { printerService } from '@/lib/printer-service';
@@ -21,7 +21,7 @@ function ArrowLeft({ size, className }: { size: number; className?: string }) {
 export default function NewTechnicalService({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
-  const { profile, loading: authLoading, tecnicoSucursalId } = useUserProfile();
+  const { profile, loading: authLoading, tecnicoDistribuidoraId } = useUserProfile();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +35,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
   // Foreign Keys (simplified as number inputs for now)
   const [idTecnico, setIdTecnico] = useState('');
   const [idCentroServicio, setIdCentroServicio] = useState('');
+  const [tecnicoInfo, setTecnicoInfo] = useState<TecnicoCentroRow | null>(null);
   
   // Dates
   const [fechaSolicitud, setFechaSolicitud] = useState('');
@@ -92,16 +93,49 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
 
     const fetchTecnicos = async () => {
       setLoadingTecnicos(true);
-      const rows = await fetchTecnicosCentro(supabase);
-      setTecnicosData(rows);
+      // Usar la vista unificada que ya tiene tecnico_id y centro_servicio_id
+      const rows = await fetchDirectorioEmpleados(supabase);
+      
+      // Auto-seleccionar el técnico actual basado en su perfil
+      if (profile?.id_empleado) {
+        const currentEmp = rows.find((t: DirectorioEmpleadoRow) => t.empleado_id === profile.id_empleado);
+        if (currentEmp) {
+          // El eslabón perdido: usar tecnico_id de la vista, o empleado_id como fallback robusto
+          const tecnicoId = currentEmp.tecnico_id ?? currentEmp.empleado_id;
+          
+          // Si el centro es null, usamos el ID 1 como fallback de cortesía (es el de AEG Principal)
+          // Esto evita el FK violation y coincide con el historial del usuario.
+          const centroId = currentEmp.centro_servicio_id || 1;
+
+          const row: TecnicoCentroRow = {
+            tecnico_id: tecnicoId,
+            centro_servicio_id: centroId,
+            empleado_id: currentEmp.empleado_id,
+            empleado_nombre: currentEmp.empleado_nombre || '',
+            empleado_cedula: currentEmp.empleado_cedula,
+            empresa_razon_social: currentEmp.empresa_razon_social,
+            empresa_rif: currentEmp.empresa_rif,
+            sucursal_ciudad: currentEmp.sucursal_ciudad,
+            sucursal_estado: currentEmp.sucursal_estado,
+          };
+
+          setTecnicoInfo(row);
+          setIdTecnico(row.tecnico_id.toString());
+          setIdCentroServicio(row.centro_servicio_id.toString());
+          setTecnicosData([row]);
+        } else {
+          console.error('No se encontró al empleado en la vista:', profile.id_empleado);
+        }
+      }
+      
       setLoadingTecnicos(false);
     };
 
     const fetchPrinter = async () => {
       setLoadingPrinter(true);
       const row = await printerService.getPrinterById(id, {
-        restrictToSucursalId:
-          profile?.rol_usuario === 'tecnico' ? tecnicoSucursalId ?? null : undefined,
+        restrictToDistribuidoraId:
+          profile?.rol_usuario === 'tecnico' ? tecnicoDistribuidoraId ?? null : undefined,
       });
       setPrinter(row ?? null);
       setLoadingPrinter(false);
@@ -109,7 +143,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
 
     fetchTecnicos();
     fetchPrinter();
-  }, [id, authLoading, profile?.rol_usuario, tecnicoSucursalId]);
+  }, [id, authLoading, profile?.rol_usuario, tecnicoDistribuidoraId, profile?.id_empleado]);
 
   // Auto-fill centro de servicio when tecnico changes
   useEffect(() => {
@@ -190,9 +224,10 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
           fecha_solicitud: fechaSolicitud,
           fecha_z_inicial: new Date(`${fechaZInicialDate}T${fechaZInicialTime}`).toISOString(),
           fecha_z_final: new Date(`${fechaZFinalDate}T${fechaZFinalTime}`).toISOString(),
-          // New Precise IDs
+          // Se registra el precinto actual siempre que exista uno en la impresora
+          id_precinto_retirado: idPrecintoActual,
+          // El nuevo precinto solo si se reemplazó
           id_precinto_instalado: sealReplaced ? Number(idPrecintoInstalado) : null,
-          id_precinto_retirado: sealReplaced ? idPrecintoActual : null,
         }]);
 
       if (insertError) throw insertError;
@@ -273,33 +308,28 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
           <div className="grid grid-cols-1 gap-6">
             <div className="space-y-4">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Técnico Responsable</label>
-              <select
-                required
-                className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white appearance-none"
-                value={idTecnico}
-                onChange={(e) => setIdTecnico(e.target.value)}
-                disabled={loadingTecnicos}
-              >
-                <option value="" disabled>
-                  {loadingTecnicos ? 'Cargando técnicos...' : 'Seleccione un técnico...'}
-                </option>
-                {tecnicosData.map(t => (
-                  <option key={t.tecnico_id} value={t.tecnico_id}>
-                    {t.empleado_nombre} (V-{t.empleado_cedula}) - {t.empresa_razon_social}
-                  </option>
-                ))}
-              </select>
+              {tecnicoInfo ? (
+                <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-700 dark:text-slate-300">
+                  {tecnicoInfo.empleado_nombre} (V{tecnicoInfo.empleado_cedula?.replace(/-/g, '')})
+                </div>
+              ) : (
+                <div className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-medium text-slate-400 animate-pulse">
+                  Cargando información del técnico...
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Centro de Servicio</label>
-              <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500 cursor-not-allowed">
-                {idCentroServicio 
-                  ? (() => {
-                      const selected = tecnicosData.find(t => t.centro_servicio_id.toString() === idCentroServicio);
-                      return selected ? `${selected.empresa_razon_social} - ${selected.sucursal_ciudad}` : idCentroServicio;
-                    })()
-                  : 'Seleccione un técnico primero'
+              <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500">
+                {tecnicoInfo
+                  ? `${tecnicoInfo.empresa_razon_social} - ${tecnicoInfo.sucursal_estado?.toUpperCase()}, ${tecnicoInfo.sucursal_ciudad}`
+                  : idCentroServicio
+                    ? (() => {
+                        const selected = tecnicosData.find(t => t.centro_servicio_id.toString() === idCentroServicio);
+                        return selected ? `${selected.empresa_razon_social} - ${selected.sucursal_estado?.toUpperCase()}, ${selected.sucursal_ciudad}` : idCentroServicio;
+                      })()
+                    : 'Seleccione un técnico primero'
                 }
               </div>
             </div>

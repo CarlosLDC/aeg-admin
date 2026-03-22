@@ -180,21 +180,17 @@ export default function RootLayout({
     setTecnicoDistribuidoraId(null);
     setLoading(false);
     
-    // 2. Immediate redirect
-    router.push('/login');
+    // 2. Immediate redirect (Full page reload for guaranteed clean state)
+    window.location.href = '/login';
     
-    // 3. Background cleanup with timeout
+    // 3. Background cleanup with timeout (optional, since reload happens)
     try {
-      // scope: 'local' is fast, but we race it to be absolutely sure we don't hang local logic
       await Promise.race([
         supabase.auth.signOut({ scope: 'local' }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Signout timeout')), 2000))
       ]);
     } catch (err) {
-      console.warn('Silent logout error (expected in offline/zombie state):', err);
-    } finally {
-      // Refresh to ensure all route segments update
-      router.refresh();
+      console.warn('Silent logout error:', err);
     }
   };
 

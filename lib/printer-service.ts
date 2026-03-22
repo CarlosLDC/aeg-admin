@@ -173,8 +173,12 @@ export const printerService = {
       .from('vista_impresoras')
       .select('*', { count: 'exact' });
 
-    if (opts?.distribuidoraId != null) {
+    if (opts?.distribuidoraId !== undefined) {
       console.log('[DEBUG] searchPrinters filter - distribuidoraId:', opts.distribuidoraId);
+      if (opts.distribuidoraId === null) {
+        // Restricted but no ID provided (or null explicitly) -> No results
+        return { data: [], count: 0 };
+      }
       request = request.eq('distribuidora_id_ref', opts.distribuidoraId);
     }
 
@@ -224,7 +228,11 @@ export const printerService = {
       .select('*', { count: 'exact' })
       .ilike('empresa_rif', `%${normalizedRif}%`);
 
-    if (opts?.distribuidoraId != null) {
+    if (opts?.distribuidoraId !== undefined) {
+      if (opts.distribuidoraId === null) {
+        // Restricted but no ID provided -> No results
+        return { data: [], count: 0 };
+      }
       req = req.eq('distribuidora_id_ref', opts.distribuidoraId);
     }
 

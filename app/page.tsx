@@ -49,16 +49,16 @@ export default function SearchPage() {
 
     try {
       // TODO: Restaurar validación cuando se arregle el problema de distribuidora_id
-      // if (profile?.rol_usuario === 'tecnico' && tecnicoDistribuidoraId == null) {
-      //   setErrorMessage(
-      //     'Su perfil técnico no tiene distribuidora vinculada en el directorio de empleados. No puede listar equipos.'
-      //   );
-      //   setHasSearched(true);
-      //   setResults([]);
-      //   setTotalCount(0);
-      //   setLoading(false);
-      //   return;
-      // }
+      if (profile?.rol_usuario === 'tecnico' && tecnicoDistribuidoraId == null) {
+        setErrorMessage(
+          'Su perfil técnico no tiene distribuidora vinculada en el directorio de empleados. No puede listar equipos.'
+        );
+        setHasSearched(true);
+        setResults([]);
+        setTotalCount(0);
+        setLoading(false);
+        return;
+      }
 
       const searchOpts =
         profile?.rol_usuario === 'tecnico' && tecnicoDistribuidoraId != null

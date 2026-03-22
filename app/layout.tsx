@@ -224,7 +224,7 @@ export default function RootLayout({
                 {/* User Menu / Logout */}
                 {user && (
                   <div className="flex items-center gap-4">
-                    <span className="text-muted text-sm hidden md:block">{user.email}</span>
+                    <span className="text-muted text-xs md:text-sm max-w-[100px] md:max-w-none truncate">{user.email}</span>
                     <button
                       onClick={handleLogout}
                       className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-foreground dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-900 rounded-lg transition-all border border-slate-200 dark:border-slate-800"

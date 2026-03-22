@@ -174,24 +174,25 @@ export default function RootLayout({
   };
 
   const handleLogout = async () => {
-    // 1. Optimistic UI: Clear states immediately
+    // 1. Optimistic UI: Clear React states immediately
     setUser(null);
     setProfile(null);
     setTecnicoDistribuidoraId(null);
     setLoading(false);
     
-    // 2. Immediate redirect (Full page reload for guaranteed clean state)
-    window.location.href = '/login';
-    
-    // 3. Background cleanup with timeout (optional, since reload happens)
+    // 2. Perform sign-out and wait for it (mostly to clear local storage)
     try {
+      // scope: 'local' is fast as it primarily clears local storage
       await Promise.race([
         supabase.auth.signOut({ scope: 'local' }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Signout timeout')), 2000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Signout timeout')), 1000))
       ]);
     } catch (err) {
-      console.warn('Silent logout error:', err);
+      console.warn('Logout error or timeout:', err);
     }
+
+    // 3. Final redirect (Full page reload to ensure clean state)
+    window.location.href = '/login';
   };
 
   return (

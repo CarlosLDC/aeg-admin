@@ -186,7 +186,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
           {/* Metadatos */}
           <div className="grid grid-cols-1 gap-6">
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Inspector Responsable</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Inspector Responsable</label>
               {inspectorInfo ? (
                 <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500">
                   {inspectorInfo.empleado_nombre} (V{inspectorInfo.empleado_cedula?.replace(/-/g, '')})
@@ -199,7 +199,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
             </div>
 
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Sucursal / empresa (según directorio)</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Sucursal / empresa (según directorio)</label>
               <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500">
                 {inspectorInfo
                   ? `${inspectorInfo.empresa_razon_social} - ${inspectorInfo.sucursal_estado?.toUpperCase()}, ${inspectorInfo.sucursal_ciudad}`
@@ -217,7 +217,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
           </div>
 
           <div className="space-y-4">
-            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Fecha de inspección</label>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Fecha de inspección</label>
             <input
               type="date"
               required
@@ -228,7 +228,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
           </div>
 
           <div className="space-y-4">
-            <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Observaciones / Resultados</label>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Observaciones / Resultados</label>
             <textarea
               required
               rows={3}

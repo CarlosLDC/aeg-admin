@@ -317,7 +317,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
           {/* Metadatos */}
           <div className="grid grid-cols-1 gap-6">
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Técnico Responsable</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Técnico Responsable</label>
               {tecnicoInfo ? (
                 <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500">
                   {tecnicoInfo.empleado_nombre} (V{tecnicoInfo.empleado_cedula?.replace(/-/g, '')})
@@ -330,7 +330,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
             </div>
 
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Centro de Servicio</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Centro de Servicio</label>
               <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 font-medium text-slate-500 dark:text-slate-500">
                 {tecnicoInfo
                   ? `${tecnicoInfo.empresa_razon_social} - ${tecnicoInfo.sucursal_estado?.toUpperCase()}, ${tecnicoInfo.sucursal_ciudad}`
@@ -350,7 +350,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
           {/* Fechas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Fecha de Solicitud</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Fecha de Solicitud</label>
               <input
                 type="date"
                 required
@@ -364,7 +364,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4 lg:col-span-1">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Inicio de Servicio</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Inicio de Servicio</label>
               <div className="flex gap-2">
                 <input
                   type="date"
@@ -381,7 +381,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
               </div>
             </div>
             <div className="space-y-4 lg:col-span-1">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Fin de Servicio</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Fin de Servicio</label>
               <div className="flex gap-2">
                 <input
                   type="date"
@@ -404,7 +404,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
             {/* Reporte Z Inicial Column */}
             <div className="flex flex-col gap-2">
               <div className="space-y-4">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Reporte Z Inicial</label>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Reporte Z Inicial</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <span className="text-slate-400 dark:text-slate-500 font-bold">#</span>
@@ -440,7 +440,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
             {/* Reporte Z Final Column */}
             <div className="flex flex-col gap-2">
               <div className="space-y-4">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Reporte Z Final</label>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Reporte Z Final</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <span className="text-slate-400 dark:text-slate-500 font-bold">#</span>
@@ -479,7 +479,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
           {/* Detalles del Servicio */}
           <div className="space-y-6">
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Costo Total</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Costo Total</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <span className="text-slate-400 dark:text-slate-500 font-bold">$</span>
@@ -498,7 +498,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
             </div>
 
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Falla Reportada</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Falla Reportada</label>
               <textarea
                 required
                 rows={3}
@@ -510,7 +510,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
             </div>
 
             <div className="space-y-4">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Observaciones (Opcional)</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Observaciones (Opcional)</label>
               <textarea
                 rows={3}
                 className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 outline-none focus:border-blue-500 transition-all font-medium text-slate-900 dark:text-white placeholder:text-slate-400"

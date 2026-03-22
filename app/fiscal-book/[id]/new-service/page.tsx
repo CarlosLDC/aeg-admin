@@ -213,6 +213,30 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
       const numTecnico = Number(idTecnico);
       const numCentro = Number(idCentroServicio);
 
+      // --- Logic Validations ---
+      const start = new Date(`${fechaInicioDate}T${fechaInicioTime}`);
+      const end = new Date(`${fechaFinDate}T${fechaFinTime}`);
+      const zStart = new Date(`${fechaZInicialDate}T${fechaZInicialTime}`);
+      const zEnd = new Date(`${fechaZFinalDate}T${fechaZFinalTime}`);
+
+      if (end < start) {
+        throw new Error('La fecha de fin de servicio no puede ser anterior a la de inicio.');
+      }
+
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      if (diffDays > 8) {
+        throw new Error('Un servicio técnico no puede durar más de 8 días según el reglamento.');
+      }
+
+      if (zEnd < zStart) {
+        throw new Error('La fecha del Reporte Z Final no puede ser anterior a la del Reporte Z Inicial.');
+      }
+
+      if (numZFinal < numZInicial) {
+        throw new Error('El número de Reporte Z Final no puede ser menor al Inicial.');
+      }
+
       const { error: insertError } = await withTimeout(
         supabase
           .from('servicios_tecnicos')

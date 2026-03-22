@@ -90,6 +90,15 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
         throw new Error('Todos los campos marcados con (*) son obligatorios según el reglamento.');
       }
 
+      // --- Logic Validations ---
+      const inspectionDate = new Date(fechaInspeccion);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // Allow today
+
+      if (inspectionDate > today) {
+        throw new Error('La fecha de inspección no puede ser futura.');
+      }
+
       const numEmpleado = Number(idEmpleado);
 
       const inspector = inspectorInfo || inspectoresData.find(t => t.empleado_id === numEmpleado);

@@ -1,6 +1,7 @@
 import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto, Software, Firmware, Sucursal, Distribuidora } from './mock-data';
 import { supabase } from './supabase';
 import { fetchTecnicosCentroByIds, fetchDirectorioEmpleadosByIds } from './tecnico-centro';
+import { withTimeout } from './timeout';
 
 /**
  * Service to handle printer data fetching.
@@ -23,11 +24,13 @@ export const printerService = {
 
     const cleanId = id.replace('mock-p-', '').replace('fp-', '');
 
-    const { data: base, error: baseError } = await supabase
-      .from('vista_impresoras')
-      .select('*')
-      .eq('impresora_id', cleanId)
-      .maybeSingle();
+    const { data: base, error: baseError } = await withTimeout(
+      supabase
+        .from('vista_impresoras')
+        .select('*')
+        .eq('impresora_id', cleanId)
+        .maybeSingle()
+    );
 
     if (baseError || !base) {
       console.error('Error fetching from vista_impresoras:', baseError?.message ?? 'Not found or access denied');
@@ -47,20 +50,20 @@ export const printerService = {
       { data: precintosRows },
       { data: serviciosRows },
       { data: inspeccionesRows },
-    ] = await Promise.all([
+    ] = await withTimeout(Promise.all([
       supabase.from('precintos').select('*').eq('id_impresora', cleanId),
       supabase.from('servicios_tecnicos').select('*').eq('id_impresora', cleanId),
       supabase.from('inspecciones_anuales').select('*').eq('id_impresora', cleanId),
-    ]);
+    ]));
 
     // ── 3. Enriquecimiento: técnicos (servicios) y directorio (inspectores) ──
     const techIds = [...new Set((serviciosRows || []).map(s => s.id_tecnico).filter(Boolean))] as number[];
     const inspectorIds = [...new Set((inspeccionesRows || []).map(i => i.id_empleado).filter(Boolean))] as number[];
 
-    const [techDetails, directorioInspectores] = await Promise.all([
+    const [techDetails, directorioInspectores] = await withTimeout(Promise.all([
       fetchTecnicosCentroByIds(supabase, techIds),
       fetchDirectorioEmpleadosByIds(supabase, inspectorIds),
-    ]);
+    ]));
 
     // ── 4. Map servicios_tecnicos ────────────────────────────────────────────
     const technicalReviews: TechnicalReview[] = (serviciosRows || []).map((s: any) => {
@@ -184,9 +187,11 @@ export const printerService = {
       }
     }
 
-    const { data: printers, error, count } = await request
-      .order('serial_fiscal', { ascending: true })
-      .range(from, to);
+    const { data: printers, error, count } = await withTimeout(
+      request
+        .order('serial_fiscal', { ascending: true })
+        .range(from, to)
+    );
 
     if (error) {
       console.error('Error buscando en vista_impresoras:', error.message);
@@ -223,7 +228,9 @@ export const printerService = {
       req = req.eq('distribuidora_id_ref', opts.distribuidoraId);
     }
 
-    const { data, error, count } = await req.order('serial_fiscal', { ascending: true }).range(from, to);
+    const { data, error, count } = await withTimeout(
+      req.order('serial_fiscal', { ascending: true }).range(from, to)
+    );
 
     if (error) {
       console.error('❌ Error en búsqueda por RIF:', error.message);

@@ -7,6 +7,7 @@ import { useEffect, useState, createContext, useContext } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
+import { withTimeout } from '@/lib/timeout';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -72,22 +73,26 @@ export default function RootLayout({
 
     const fetchProfile = async (userId: string) => {
       try {
-        const { data, error } = await supabase
-          .from('perfiles')
-          .select('*')
-          .eq('id_usuario', userId)
-          .maybeSingle();
+        const { data, error } = await withTimeout(
+          supabase
+            .from('perfiles')
+            .select('*')
+            .eq('id_usuario', userId)
+            .maybeSingle()
+        );
         if (error) throw error;
         setProfile(data);
 
         let distribuidoraId: number | null = null;
         if (data?.rol_usuario === 'tecnico' && data.id_empleado != null) {
           console.log('[DEBUG] Consultando vista_directorio_empleados para empleado_id:', data.id_empleado);
-          const { data: dirRow, error: dirErr } = await supabase
-            .from('vista_directorio_empleados')
-            .select('empleado_id, distribuidora_id, sucursal_id, empleado_nombre')
-            .eq('empleado_id', data.id_empleado)
-            .maybeSingle();
+          const { data: dirRow, error: dirErr } = await withTimeout(
+            supabase
+              .from('vista_directorio_empleados')
+              .select('empleado_id, distribuidora_id, sucursal_id, empleado_nombre')
+              .eq('empleado_id', data.id_empleado)
+              .maybeSingle()
+          );
           console.log('[DEBUG] Resultado dirRow:', JSON.stringify(dirRow), 'error:', dirErr);
           if (!dirErr && dirRow?.distribuidora_id != null) {
             distribuidoraId = Number(dirRow.distribuidora_id);
@@ -99,6 +104,9 @@ export default function RootLayout({
         console.error("[Auth] Error fetching profile:", err);
         setProfile(null);
         setTecnicoDistribuidoraId(null);
+      } finally {
+        // Ensure we don't block the UI if profile fetch fails or times out
+        setLoading(false);
       }
     };
 
@@ -113,23 +121,22 @@ export default function RootLayout({
     }, 6000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const userId = session.user.id;
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      if (currentUser) {
+        const userId = currentUser.id;
         if (lastProfileUserIdRef.current !== userId) {
           lastProfileUserIdRef.current = userId;
           await fetchProfile(userId);
+        } else {
+          // If user exists but profile already fetched, stop loading
+          setLoading(false);
         }
       } else {
         lastProfileUserIdRef.current = null;
         setProfile(null);
         setTecnicoDistribuidoraId(null);
-      }
-
-      // Reduce lock-request churn by avoiding extra getSession() calls.
-      // We rely on the auth listener for the initial state.
-      if (isInitialCallback) {
-        isInitialCallback = false;
         setLoading(false);
       }
     });
@@ -167,18 +174,26 @@ export default function RootLayout({
   };
 
   const handleLogout = async () => {
+    // 1. Optimistic UI: Clear states immediately
+    setUser(null);
+    setProfile(null);
+    setTecnicoDistribuidoraId(null);
+    setLoading(false);
+    
+    // 2. Immediate redirect
+    router.push('/login');
+    
+    // 3. Background cleanup with timeout
     try {
-      // "local" guarantees we clear the local tokens even if the refresh token
-      // is already expired, which otherwise can leave the UI in a stuck state.
-      await supabase.auth.signOut({ scope: 'local' });
+      // scope: 'local' is fast, but we race it to be absolutely sure we don't hang local logic
+      await Promise.race([
+        supabase.auth.signOut({ scope: 'local' }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Signout timeout')), 2000))
+      ]);
     } catch (err) {
-      console.error('Logout error:', err);
+      console.warn('Silent logout error (expected in offline/zombie state):', err);
     } finally {
-      setUser(null);
-      setProfile(null);
-      setTecnicoDistribuidoraId(null);
-      setLoading(false);
-      router.push('/login');
+      // Refresh to ensure all route segments update
       router.refresh();
     }
   };

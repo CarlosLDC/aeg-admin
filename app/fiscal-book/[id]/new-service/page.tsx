@@ -2,6 +2,7 @@
 
 import { useState, use, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { withTimeout } from '@/lib/timeout';
 import { fetchTecnicosCentro, fetchDirectorioEmpleados, type TecnicoCentroRow, type DirectorioEmpleadoRow } from '@/lib/tecnico-centro';
 import { useUserProfile } from '@/app/layout';
 import { canRegistrarServiciosEInspecciones } from '@/lib/roles';
@@ -76,12 +77,15 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
         setIdPrecintoActual(null);
         return;
       }
-      const { data } = await supabase
-        .from('precintos')
-        .select('id')
-        .eq('id_impresora', cleanId)
-        .eq('estatus', 'en_impresora')
-        .maybeSingle();
+      const { data } = await withTimeout(
+        supabase
+          .from('precintos')
+          .select('id')
+          .eq('id_impresora', cleanId)
+          .eq('estatus', 'en_impresora')
+          .maybeSingle(),
+        10000
+      );
       setIdPrecintoActual(data?.id ?? null);
     };
     loadPrecintoActivo();
@@ -163,11 +167,14 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
       if (!sealReplaced) return;
 
       setLoadingPrecintos(true);
-      const { data, error } = await supabase
-        .from('precintos')
-        .select('*')
-        .eq('estatus', 'en_inventario')
-        .order('serial', { ascending: true });
+      const { data, error } = await withTimeout(
+        supabase
+          .from('precintos')
+          .select('*')
+          .eq('estatus', 'en_inventario')
+          .order('serial', { ascending: true }),
+        10000
+      );
 
       if (!error && data) {
         setPrecintosDisponibles(data);
@@ -184,7 +191,7 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await withTimeout(supabase.auth.getUser(), 8000);
       if (!user) {
         throw new Error('No se encontró una sesión activa.');
       }
@@ -206,29 +213,32 @@ export default function NewTechnicalService({ params }: { params: Promise<{ id: 
       const numTecnico = Number(idTecnico);
       const numCentro = Number(idCentroServicio);
 
-      const { error: insertError } = await supabase
-        .from('servicios_tecnicos')
-        .insert([{
-          id_impresora: cleanId,
-          id_tecnico: numTecnico,
-          id_centro_servicio: numCentro,
-          precinto_violentado: precintoViolentado,
-          observaciones: observaciones || null,
-          fecha_inicio: new Date(`${fechaInicioDate}T${fechaInicioTime}`).toISOString(),
-          fecha_fin: new Date(`${fechaFinDate}T${fechaFinTime}`).toISOString(),
-          url_fotos: [], 
-          reporte_z_inicial: numZInicial,
-          reporte_z_final: numZFinal,
-          costo: numCosto,
-          falla_reportada: fallaReportada,
-          fecha_solicitud: fechaSolicitud,
-          fecha_z_inicial: new Date(`${fechaZInicialDate}T${fechaZInicialTime}`).toISOString(),
-          fecha_z_final: new Date(`${fechaZFinalDate}T${fechaZFinalTime}`).toISOString(),
-          // Se registra el precinto actual siempre que exista uno en la impresora
-          id_precinto_retirado: idPrecintoActual,
-          // El nuevo precinto solo si se reemplazó
-          id_precinto_instalado: sealReplaced ? Number(idPrecintoInstalado) : null,
-        }]);
+      const { error: insertError } = await withTimeout(
+        supabase
+          .from('servicios_tecnicos')
+          .insert([{
+            id_impresora: cleanId,
+            id_tecnico: numTecnico,
+            id_centro_servicio: numCentro,
+            precinto_violentado: precintoViolentado,
+            observaciones: observaciones || null,
+            fecha_inicio: new Date(`${fechaInicioDate}T${fechaInicioTime}`).toISOString(),
+            fecha_fin: new Date(`${fechaFinDate}T${fechaFinTime}`).toISOString(),
+            url_fotos: [], 
+            reporte_z_inicial: numZInicial,
+            reporte_z_final: numZFinal,
+            costo: numCosto,
+            falla_reportada: fallaReportada,
+            fecha_solicitud: fechaSolicitud,
+            fecha_z_inicial: new Date(`${fechaZInicialDate}T${fechaZInicialTime}`).toISOString(),
+            fecha_z_final: new Date(`${fechaZFinalDate}T${fechaZFinalTime}`).toISOString(),
+            // Se registra el precinto actual siempre que exista uno en la impresora
+            id_precinto_retirado: idPrecintoActual,
+            // El nuevo precinto solo si se reemplazó
+            id_precinto_instalado: sealReplaced ? Number(idPrecintoInstalado) : null,
+          }]),
+        20000 // Higher timeout for inserts
+      );
 
       if (insertError) throw insertError;
 

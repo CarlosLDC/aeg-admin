@@ -2,6 +2,7 @@
 
 import { useState, use, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { withTimeout } from '@/lib/timeout';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { fetchDirectorioEmpleados, type DirectorioEmpleadoRow } from '@/lib/tecnico-centro';
@@ -78,7 +79,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
     setError(null);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await withTimeout(supabase.auth.getUser(), 8000);
       if (!user) throw new Error('No se encontró una sesión activa.');
 
       // Ownership Check
@@ -94,16 +95,19 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
       const inspector = inspectorInfo || inspectoresData.find(t => t.empleado_id === numEmpleado);
       // const idCentroServicio = inspector?.centro_servicio_id; // Columna no existe en la tabla según el esquema proveído
 
-      const { error: insertError } = await supabase
-        .from('inspecciones_anuales')
-        .insert([{
-          id_impresora: cleanId,
-          id_empleado: numEmpleado,
-          observaciones: observaciones || null,
-          precinto_violentado: precintoViolentado,
-          url_fotos: [],
-          fecha: fechaInspeccion,
-        }]);
+      const { error: insertError } = await withTimeout(
+        supabase
+          .from('inspecciones_anuales')
+          .insert([{
+            id_impresora: cleanId,
+            id_empleado: numEmpleado,
+            observaciones: observaciones || null,
+            precinto_violentado: precintoViolentado,
+            url_fotos: [],
+            fecha: fechaInspeccion,
+          }]),
+        20000 // Higher timeout for inserts
+      );
 
       if (insertError) throw insertError;
 

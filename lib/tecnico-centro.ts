@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { withTimeout } from './timeout';
 
 /**
  * Fila unificada (equivalente a la antigua vista_tecnicos_centros) para selects de técnico + centro.
@@ -141,7 +142,8 @@ export type DirectorioEmpleadoRow = {
 export async function fetchDirectorioEmpleados(
   supabase: SupabaseClient
 ): Promise<DirectorioEmpleadoRow[]> {
-  const { data, error } = await supabase.from('vista_directorio_empleados').select(`
+  const { data, error } = await withTimeout(
+    supabase.from('vista_directorio_empleados').select(`
     empleado_id,
     empleado_nombre,
     empleado_cedula,
@@ -153,7 +155,8 @@ export async function fetchDirectorioEmpleados(
     distribuidora_id,
     tecnico_id,
     distribuidor_id
-  `);
+  `)
+  );
 
   if (error) {
     console.error('fetchDirectorioEmpleados:', error.message);
@@ -169,24 +172,26 @@ export async function fetchDirectorioEmpleadosByIds(
 ): Promise<DirectorioEmpleadoRow[]> {
   if (empleadoIds.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from('vista_directorio_empleados')
-    .select(
-      `
-    empleado_id,
-    empleado_nombre,
-    empleado_cedula,
-    empresa_razon_social,
-    empresa_rif,
-    sucursal_ciudad,
-    sucursal_estado,
-    centro_servicio_id,
-    distribuidora_id,
-    tecnico_id,
-    distribuidor_id
-  `
-    )
-    .in('empleado_id', empleadoIds);
+  const { data, error } = await withTimeout(
+    supabase
+      .from('vista_directorio_empleados')
+      .select(
+        `
+      empleado_id,
+      empleado_nombre,
+      empleado_cedula,
+      empresa_razon_social,
+      empresa_rif,
+      sucursal_ciudad,
+      sucursal_estado,
+      centro_servicio_id,
+      distribuidora_id,
+      tecnico_id,
+      distribuidor_id
+    `
+      )
+      .in('empleado_id', empleadoIds)
+  );
 
   if (error) {
     console.error('fetchDirectorioEmpleadosByIds:', error.message);

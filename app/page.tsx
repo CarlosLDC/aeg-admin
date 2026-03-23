@@ -46,6 +46,8 @@ export default function SearchPage() {
   // State
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState<'serial' | 'rif'>('serial');
+  // Tipo realmente usado en la última búsqueda (no cambia si solo tocas el selector)
+  const [searchedType, setSearchedType] = useState<'serial' | 'rif'>('serial');
   const [results, setResults] = useState<FiscalPrinter[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -92,6 +94,8 @@ export default function SearchPage() {
   ) => {
     if (authLoading) return;
 
+    const effectiveSearchType = isNewSearch ? searchType : searchedType;
+
     const size = pageSizeOverride ?? pageSize;
 
     setLoading(true);
@@ -127,7 +131,7 @@ export default function SearchPage() {
       console.log('[DEBUG] page.tsx - resultados:', data.length, 'count:', count);
 
       // Interceptar resultados exactos o vacíos para búsqueda por serial
-      if (isNewSearch && searchType === 'serial' && searchTerm.trim() !== '') {
+      if (isNewSearch && effectiveSearchType === 'serial' && searchTerm.trim() !== '') {
         if (count === 1 && data.length > 0) {
           router.push(`/fiscal-book/${data[0].id}`);
           return; // Mantener loading activo mientras navega
@@ -175,6 +179,7 @@ export default function SearchPage() {
       }
     }
     
+    setSearchedType(searchType);
     performSearch(1, true);
   };
 
@@ -191,7 +196,7 @@ export default function SearchPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const rifConsolidatedBusinessName = (() => {
-    if (searchType !== 'rif') return null;
+    if (searchedType !== 'rif') return null;
     if (results.length === 0) return null;
 
     const nonEmptyNames = results
@@ -365,7 +370,7 @@ export default function SearchPage() {
 
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="space-y-2 md:space-y-1">
-                        {searchType === 'rif' ? (
+                        {searchedType === 'rif' ? (
                           <h3 className="text-xl font-bold font-mono tracking-wide text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {printer.serial_fiscal}
                           </h3>
@@ -376,7 +381,7 @@ export default function SearchPage() {
                             )}
                           </h3>
                         )}
-                        {searchType !== 'rif' && (
+                        {searchedType !== 'rif' && (
                           <div className="flex flex-wrap items-center gap-2 md:gap-3 text-sm">
                             <span className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-100 dark:border-slate-700">
                               RIF: {printer.rif || <NoData />}

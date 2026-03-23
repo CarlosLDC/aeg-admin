@@ -79,7 +79,8 @@ export default function RootLayout({
             .from('perfiles')
             .select('*')
             .eq('id_usuario', userId)
-            .maybeSingle()
+            .maybeSingle(),
+          30000
         );
         if (error) throw error;
         setProfile(data);
@@ -91,7 +92,8 @@ export default function RootLayout({
             supabase
               .from('vista_directorio_empleados')
               .select('empleado_id, distribuidora_id, sucursal_id, empleado_nombre')
-              .eq('empleado_id', data.id_empleado)
+              .eq('empleado_id', data.id_empleado),
+            30000
           );
           const dirRow =
             !dirErr && Array.isArray(dirRows)

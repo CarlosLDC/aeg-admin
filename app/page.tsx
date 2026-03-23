@@ -190,6 +190,19 @@ export default function SearchPage() {
   };
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const rifConsolidatedBusinessName = (() => {
+    if (searchType !== 'rif') return null;
+    if (results.length === 0) return null;
+
+    const nonEmptyNames = results
+      .map((r) => r.businessName)
+      .filter((n): n is string => typeof n === 'string' && n.trim().length > 0);
+
+    if (nonEmptyNames.length === 0) return null;
+
+    const uniqueNames = Array.from(new Set(nonEmptyNames.map((n) => n.trim())));
+    return uniqueNames.length === 1 ? uniqueNames[0] : null;
+  })();
 
   return (
     <main className="container mx-auto px-6 max-w-4xl py-12 md:py-20 flex-1 flex flex-col justify-center">
@@ -302,8 +315,16 @@ export default function SearchPage() {
           className="animate-in fade-in slide-in-from-bottom-4 duration-500 scroll-mt-[5.5rem]"
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 px-2">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white">Resultados Centrales</h2>
-            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-2">
+            <div className="flex flex-col gap-2">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">Resultados Centrales</h2>
+              {rifConsolidatedBusinessName && (
+                <span className="text-sm font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap max-w-[90vw] overflow-hidden text-ellipsis">
+                  Razón social: <span className="font-bold">{rifConsolidatedBusinessName}</span>
+                </span>
+              )}
+            </div>
+            {/* En móvil (flex-col) el default de flex items es stretch; evitamos que las pills se estiren a 100% ancho */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center items-start gap-3 sm:gap-2">
               <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                 <span className="whitespace-nowrap">Por página</span>
                 <select
@@ -344,17 +365,27 @@ export default function SearchPage() {
 
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="space-y-2 md:space-y-1">
-                        <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {printer.businessName || <span className="italic text-slate-400 dark:text-slate-600">N/D</span>}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-2 md:gap-3 text-sm">
-                          <span className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-100 dark:border-slate-700">
-                            RIF: {printer.rif || <NoData />}
-                          </span>
-                          <span className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-100 dark:border-slate-700">
-                            SN: {printer.serial_fiscal}
-                          </span>
-                        </div>
+                        {searchType === 'rif' ? (
+                          <h3 className="text-xl font-bold font-mono tracking-wide text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            {printer.serial_fiscal}
+                          </h3>
+                        ) : (
+                          <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            {printer.businessName || (
+                              <span className="italic text-slate-400 dark:text-slate-600">N/D</span>
+                            )}
+                          </h3>
+                        )}
+                        {searchType !== 'rif' && (
+                          <div className="flex flex-wrap items-center gap-2 md:gap-3 text-sm">
+                            <span className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-100 dark:border-slate-700">
+                              RIF: {printer.rif || <NoData />}
+                            </span>
+                            <span className="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-1 rounded-md font-mono border border-slate-100 dark:border-slate-700">
+                              SN: {printer.serial_fiscal}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-row items-center justify-between md:justify-end w-full md:w-auto gap-4 mt-2 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-slate-800">

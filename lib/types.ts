@@ -57,6 +57,8 @@ export interface TechnicalReview {
   technician: string | null;
   technicianId: string | null;
   interventionType: 'Mantenimiento Preventivo' | 'Mantenimiento Correctivo' | 'Cambio de Alicuota' | 'Reparacion General' | 'Inicializacion';
+  startDate?: string | null;
+  endDate?: string | null;
   date: string | null;
   startTime?: string | null;
   endTime?: string | null;

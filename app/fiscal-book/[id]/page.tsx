@@ -474,8 +474,8 @@ function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
                     drawField('Centro Autorizado', tr.serviceCenter, margin, y); y += 6;
                     drawField('RIF Centro', tr.centerRif, margin, y); y += 6;
                     drawField('Fecha de Solicitud', tr.fechaSolicitud, margin, y); y += 6;
-                    drawField('Fecha de Inicio', tr.date, margin, y); y += 6;
-                    drawField('Fecha de Fin', tr.date, margin, y); y += 6;
+                    drawField('Fecha de Inicio', tr.startDate ?? tr.date, margin, y); y += 6;
+                    drawField('Fecha de Fin', tr.endDate, margin, y); y += 6;
                     drawField('Primera Reporte Z', tr.zReportStart, margin, y); y += 6;
                     drawField('Fecha y Hora de Primer Reporte Z', tr.zReportTimestampStart, margin, y); y += 6;
                     drawField('Último Reporte Z', tr.zReportEnd, margin, y); y += 6;

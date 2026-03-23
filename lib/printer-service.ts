@@ -108,6 +108,8 @@ export const printerService = {
         technician: techInfo?.empleado_nombre || null,
         technicianId: techInfo?.empleado_cedula || null,
         interventionType: (s.falla_reportada?.toLowerCase().includes('mantenimiento') ? 'Mantenimiento Preventivo' : 'Reparacion General') as any,
+        startDate: s.fecha_inicio ? s.fecha_inicio.split('T')[0] : null,
+        endDate: s.fecha_fin ? s.fecha_fin.split('T')[0] : null,
         date: s.fecha_inicio ? s.fecha_inicio.split('T')[0] : (s.created_at?.split('T')[0] || null),
         startTime: s.fecha_inicio ? s.fecha_inicio.split('T')[1]?.substring(0, 5) : null,
         endTime: s.fecha_fin ? s.fecha_fin.split('T')[1]?.substring(0, 5) : null,

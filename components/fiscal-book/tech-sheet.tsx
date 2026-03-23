@@ -23,11 +23,11 @@ export function SingleTechSheet({ review, printer }: { review: TechnicalReview; 
             </div>
             <div>
               <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Inicio</label>
-              <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.date || <NoData />}</p>
+              <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.startDate || review.date || <NoData />}</p>
             </div>
             <div>
               <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Fin</label>
-              <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.date || <NoData />}</p>
+              <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.endDate || <NoData />}</p>
             </div>
             <div>
               <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Primera Reporte Z</label>

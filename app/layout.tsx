@@ -47,6 +47,7 @@ export default function RootLayout({
 
   const router = useRouter();
   const pathname = usePathname();
+  const showManualLink = profile?.rol_usuario === 'seniat' || profile?.rol_usuario === 'tecnico';
 
   // 1. Theme Logic
   useEffect(() => {
@@ -211,10 +212,20 @@ export default function RootLayout({
           <header className="bg-white/80 dark:bg-slate-950/80 border-b border-slate-200/60 dark:border-slate-800/60 sticky top-0 z-50 backdrop-blur-xl transition-colors">
             <div className="container mx-auto px-6 h-16 flex items-center justify-between">
 
-              {/* Home Link via Logo */}
-              <Link href="/" className="flex items-center gap-3 group">
-                <img src="/aeg-logo.png" alt="AEG Logo" className="h-10 w-auto logo-theme-aware" />
-              </Link>
+              <div className="flex items-center gap-3 md:gap-4">
+                {/* Home Link via Logo */}
+                <Link href="/" className="flex items-center gap-3 group">
+                  <img src="/aeg-logo.png" alt="AEG Logo" className="h-10 w-auto logo-theme-aware" />
+                </Link>
+                {user && showManualLink && (
+                  <Link
+                    href="/manual"
+                    className="inline-flex items-center px-2 py-1 md:px-2.5 rounded-md text-[11px] md:text-sm font-medium text-slate-500 dark:text-slate-400 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/70 hover:text-slate-700 dark:hover:text-slate-200 transition-all"
+                  >
+                    Manual
+                  </Link>
+                )}
+              </div>
 
               {/* Toolbar */}
               <div className="flex items-center gap-4">

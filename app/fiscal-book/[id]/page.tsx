@@ -33,6 +33,7 @@ function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
     const [inspFilterYear, setInspFilterYear] = useState<string>('all');
     const [isDownloading, setIsDownloading] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -633,11 +634,13 @@ function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
         </div>
     );
 
+    const hasLibroFilters = viewMode === 'tech' || viewMode === 'inspection';
+
     const actionMenu = (
-        <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto">
+        <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
             {/* Pagination Control - Reverting to integrated Pill style */}
             {viewMode !== 'info' && totalPages > 0 ? (
-                <div className="flex items-center bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm">
+                <div className="flex items-center bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm flex-none min-w-[120px] md:min-w-[132px]">
                     <button
                         onClick={handlePrev}
                         disabled={currentPage === 0}
@@ -646,7 +649,7 @@ function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
                     >
                         <ArrowLeft size={14} />
                     </button>
-                    <div className="px-3 flex items-center justify-center text-slate-600 dark:text-slate-300 text-[11px] font-mono font-bold tabular-nums">
+                    <div className="px-2 md:px-3 min-w-[58px] flex items-center justify-center text-slate-600 dark:text-slate-300 text-[11px] font-mono font-bold tabular-nums whitespace-nowrap">
                         {String(currentPage + 1).padStart(2, '0')} / {String(totalPages).padStart(2, '0')}
                     </div>
                     <button
@@ -662,7 +665,21 @@ function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
             
             {/* Actions (Add/Download) - Hidden in 'Inf. Base' as requested */}
             {viewMode !== 'info' && (
-                <div className="flex items-center bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm group/actions">
+                <div className="flex items-center shrink-0 bg-slate-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm group/actions">
+                    {hasLibroFilters && (
+                        <button
+                            type="button"
+                            onClick={() => setIsFiltersOpen((prev) => !prev)}
+                            className="inline-flex items-center justify-center h-7 w-7 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 transition-colors"
+                            title={isFiltersOpen ? 'Ocultar filtros' : 'Mostrar filtros'}
+                            aria-expanded={isFiltersOpen}
+                            aria-label={isFiltersOpen ? 'Ocultar filtros' : 'Mostrar filtros'}
+                        >
+                            <svg viewBox="0 0 24 24" className="w-[14px] h-[14px]" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16l-6 7v5l-4-2v-3L4 6z" />
+                            </svg>
+                        </button>
+                    )}
                     {canRegistrarServiciosEInspecciones(profile) && (
                         <Link
                             href={`/fiscal-book/${id}/${viewMode === 'tech' ? 'new-service' : 'new-inspection'}`}
@@ -691,7 +708,7 @@ function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
     );
 
     const libroFiltrosInner =
-        viewMode === 'tech' || viewMode === 'inspection' ? (
+        hasLibroFilters ? (
             <>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
                     Filtros
@@ -867,19 +884,21 @@ function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
                 {isMobileMenuOpen && (
                     <div className="md:hidden flex flex-col gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 animate-in fade-in duration-200">
                         {tabsMenu}
-                        {libroFiltrosInner != null ? (
+                        {actionMenu}
+                        {libroFiltrosInner != null && isFiltersOpen ? (
                             <div className="flex flex-col gap-2 w-full rounded-xl bg-slate-50/80 dark:bg-slate-900/40 p-3 border border-slate-200/80 dark:border-slate-700/80">
                                 {libroFiltrosInner}
                             </div>
                         ) : null}
-                        {actionMenu}
                     </div>
                 )}
 
                 {libroFiltrosInner != null ? (
-                    <div className="no-print hidden md:flex mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex-row flex-wrap gap-2 items-center">
-                        {libroFiltrosInner}
-                    </div>
+                    isFiltersOpen ? (
+                        <div className="no-print hidden md:flex mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex-row flex-wrap gap-2 items-center">
+                            {libroFiltrosInner}
+                        </div>
+                    ) : null
                 ) : null}
             </div>
 

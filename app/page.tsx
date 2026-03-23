@@ -217,7 +217,7 @@ export default function SearchPage() {
           Auditoría de Equipo Fiscal
         </h1>
         <p className="text-slate-500 dark:text-slate-400 text-lg md:text-xl max-w-2xl mx-auto font-light leading-relaxed">
-          Verificación segura del historial de mantenimiento y estatus operativo en la red AEG, autorizada por el SENIAT.
+          Libro virtual de control, reparación y mantenimiento.
         </p>
       </div>
 

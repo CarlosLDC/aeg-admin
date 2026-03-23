@@ -1,15 +1,43 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { FiscalPrinter } from '@/lib/mock-data';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { FiscalPrinter } from '@/lib/types';
 import { printerService } from '@/lib/printer-service';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useUserProfile } from '@/app/layout';
+import { NoData } from '@/components/no-data';
+import { SearchIcon, ArrowRight } from '@/components/icons';
 
-const NoData = () => (
-  <span className="text-slate-400 dark:text-slate-600 text-sm italic font-medium normal-case">N/D</span>
-);
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+const PAGE_SIZE_STORAGE_KEY = 'aeg-search-page-size';
+/** Altura aproximada del header sticky + margen para scroll manual */
+const SCROLL_HEADER_OFFSET_PX = 88;
+
+function readStoredPageSize(): number {
+  if (typeof window === 'undefined') return 5;
+  try {
+    const raw = localStorage.getItem(PAGE_SIZE_STORAGE_KEY);
+    const n = raw != null ? Number(raw) : NaN;
+    if (PAGE_SIZE_OPTIONS.includes(n as (typeof PAGE_SIZE_OPTIONS)[number])) {
+      return n;
+    }
+  } catch {
+    /* ignore */
+  }
+  return 5;
+}
+
+function scrollResultsSectionIntoView(resultsEl: HTMLElement | null) {
+  if (!resultsEl || typeof window === 'undefined') return;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const rect = resultsEl.getBoundingClientRect();
+      const top = rect.top + window.scrollY - SCROLL_HEADER_OFFSET_PX;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    });
+  });
+}
 
 export default function SearchPage() {
   const router = useRouter();
@@ -25,9 +53,30 @@ export default function SearchPage() {
 
   // Pagination & Scrolling
   const resultsRef = useRef<HTMLDivElement>(null);
+  const pendingScrollToResults = useRef(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const PAGE_SIZE = 5;
+  const [pageSize, setPageSize] = useState(5);
+
+  useEffect(() => {
+    setPageSize(readStoredPageSize());
+  }, []);
+
+  const persistPageSize = useCallback((n: number) => {
+    setPageSize(n);
+    try {
+      localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(n));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  /** Tras terminar una carga (p. ej. cambio de página), el DOM ya refleja los resultados: entonces hacemos scroll. */
+  useEffect(() => {
+    if (loading || !pendingScrollToResults.current) return;
+    pendingScrollToResults.current = false;
+    scrollResultsSectionIntoView(resultsRef.current);
+  }, [loading]);
 
   // Search Normalization
   const handleSearchTermChange = (value: string) => {
@@ -36,8 +85,14 @@ export default function SearchPage() {
     setSearchTerm(normalized);
   };
 
-  const performSearch = async (page: number, isNewSearch: boolean = false) => {
+  const performSearch = async (
+    page: number,
+    isNewSearch: boolean = false,
+    pageSizeOverride?: number
+  ) => {
     if (authLoading) return;
+
+    const size = pageSizeOverride ?? pageSize;
 
     setLoading(true);
     
@@ -67,7 +122,7 @@ export default function SearchPage() {
 
       console.log('[DEBUG] page.tsx - rol:', profile?.rol_usuario, 'distribuidoraId:', tecnicoDistribuidoraId, 'searchOpts:', searchOpts);
 
-      const { data, count } = await printerService.searchPrinters(searchTerm, page, PAGE_SIZE, searchOpts);
+      const { data, count } = await printerService.searchPrinters(searchTerm, page, size, searchOpts);
 
       console.log('[DEBUG] page.tsx - resultados:', data.length, 'count:', count);
 
@@ -85,12 +140,12 @@ export default function SearchPage() {
 
       if (isNewSearch) setHasSearched(true);
       setResults(data);
-      setTotalCount(count);
+      setTotalCount(count ?? 0);
       setCurrentPage(page);
 
-      // Scroll to results top on page change
-      if (!isNewSearch && resultsRef.current) {
-        resultsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Scroll tras pintar (useEffect cuando loading pasa a false); no aquí — React aún no ha actualizado el DOM
+      if (!isNewSearch) {
+        pendingScrollToResults.current = true;
       }
     } catch (error) {
       console.error("Error searching printers:", error);
@@ -124,10 +179,17 @@ export default function SearchPage() {
   };
 
   const handlePageChange = (newPage: number) => {
-    performSearch(newPage);
+    void performSearch(newPage, false);
   };
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const handlePageSizeChange = (next: number) => {
+    persistPageSize(next);
+    if (hasSearched) {
+      void performSearch(1, false, next);
+    }
+  };
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   return (
     <main className="container mx-auto px-6 max-w-4xl py-12 md:py-20 flex-1 flex flex-col justify-center">
@@ -235,10 +297,28 @@ export default function SearchPage() {
 
       {/* Results Area */}
       {hasSearched && (
-        <div ref={resultsRef} className="animate-in fade-in slide-in-from-bottom-4 duration-500 scroll-mt-6">
+        <div
+          ref={resultsRef}
+          className="animate-in fade-in slide-in-from-bottom-4 duration-500 scroll-mt-[5.5rem]"
+        >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 px-2">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">Resultados Centrales</h2>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-2">
+              <label className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <span className="whitespace-nowrap">Por página</span>
+                <select
+                  value={pageSize}
+                  disabled={loading}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                  className="h-9 min-w-[4.5rem] rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 px-2 py-1 text-sm font-semibold normal-case tracking-normal cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                >
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200 dark:border-slate-700">
                 {totalCount} Total
               </span>
@@ -356,26 +436,3 @@ export default function SearchPage() {
   );
 }
 
-function SearchIcon({ size, className }: { size: number; className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-    </svg>
-  );
-}
-
-function ArrowRight({ size, className }: { size: number; className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-    </svg>
-  );
-}
-
-function LockIcon({ size, className }: { size: number; className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}

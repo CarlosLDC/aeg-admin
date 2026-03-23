@@ -100,3 +100,115 @@ body {
 .dark .logo-theme-aware {
   filter: brightness(0) invert(1);
 }
+
+/* Entrance animations (replaces tailwindcss-animate) */
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform:
+      translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0)
+      scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1));
+  }
+}
+
+.animate-in {
+  animation: enter var(--animate-duration, 300ms) ease forwards;
+}
+
+.fade-in { --tw-enter-opacity: 0; }
+.zoom-in { --tw-enter-scale: 0.95; }
+.slide-in-from-top-2 { --tw-enter-translate-y: -0.5rem; }
+.slide-in-from-top-4 { --tw-enter-translate-y: -1rem; }
+.slide-in-from-bottom-4 { --tw-enter-translate-y: 1rem; }
+.slide-in-from-left-2 { --tw-enter-translate-x: -0.5rem; }
+
+.animate-in.duration-200 { --animate-duration: 200ms; }
+.animate-in.duration-300 { --animate-duration: 300ms; }
+.animate-in.duration-500 { --animate-duration: 500ms; }
+.animate-in.duration-700 { --animate-duration: 700ms; }
+.animate-in.duration-1000 { --animate-duration: 1000ms; }
+
+/* ---------------------------------------------------------------------------
+   Modales nativos (<dialog>) — mismo fondo y centrado en Chrome, Firefox,
+   Safari y Edge (el panel interior se estiliza con Tailwind en el componente).
+   --------------------------------------------------------------------------- */
+dialog.app-modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+dialog.app-modal::backdrop {
+  background: rgb(15 23 42 / 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.dark dialog.app-modal::backdrop {
+  background: rgb(0 0 0 / 0.65);
+}
+
+/* Evita flash de estilo antes de showModal / cuando está cerrado */
+dialog.app-modal:not([open]) {
+  display: none;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Campos fecha / hora / datetime-local: mismo “marco” en todos los motores.
+   El popup del calendario/reloj sigue siendo nativo del SO (no personalizable).
+   --------------------------------------------------------------------------- */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  box-sizing: border-box;
+  min-height: 2.75rem; /* ~ h-11, alineado con py-3 + borde */
+  line-height: 1.25;
+  /* color-scheme ya definido arriba para input; refuerzo por tipo */
+  color-scheme: light;
+}
+
+.dark input[type="date"],
+.dark input[type="time"],
+.dark input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+/* Firefox: quita el borde interno extra */
+input[type="date"]::-moz-focus-inner,
+input[type="time"]::-moz-focus-inner,
+input[type="datetime-local"]::-moz-focus-inner {
+  border: 0;
+}
+
+/* WebKit / Blink: indicadores de calendario/reloj alineados y clicables */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Campos de edición de fecha/hora en WebKit (segmentos) */
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit,
+input[type="datetime-local"]::-webkit-datetime-edit {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+input[type="time"]::-webkit-datetime-edit-fields-wrapper,
+input[type="datetime-local"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}

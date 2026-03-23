@@ -1,4 +1,4 @@
-import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto, Software, Firmware, Sucursal, Distribuidora } from './mock-data';
+import { FiscalPrinter, TechnicalReview, AnnualInspection } from './types';
 import { supabase } from './supabase';
 import { fetchTecnicosCentroByIds, fetchDirectorioEmpleadosByIds } from './tecnico-centro';
 import { withTimeout } from './timeout';
@@ -52,8 +52,16 @@ export const printerService = {
       { data: inspeccionesRows },
     ] = await withTimeout(Promise.all([
       supabase.from('precintos').select('*').eq('id_impresora', cleanId),
-      supabase.from('servicios_tecnicos').select('*').eq('id_impresora', cleanId),
-      supabase.from('inspecciones_anuales').select('*').eq('id_impresora', cleanId),
+      supabase
+        .from('servicios_tecnicos')
+        .select('*')
+        .eq('id_impresora', cleanId)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('inspecciones_anuales')
+        .select('*')
+        .eq('id_impresora', cleanId)
+        .order('created_at', { ascending: true }),
     ]));
 
     // ── 3. Enriquecimiento: técnicos (servicios) y directorio (inspectores) ──
@@ -89,8 +97,13 @@ export const printerService = {
 
       return {
         id: String(s.id),
+        createdAt: s.created_at ?? null,
         fechaSolicitud: s.fecha_solicitud || null,
-        serviceCenter: techInfo?.empresa_razon_social || null,
+        serviceCenter:
+          techInfo?.empresa_razon_social ||
+          (s.id_distribuidora != null
+            ? `Distribuidora (id ${s.id_distribuidora})`
+            : null),
         centerRif: techInfo?.empresa_rif || null,
         technician: techInfo?.empleado_nombre || null,
         technicianId: techInfo?.empleado_cedula || null,
@@ -128,6 +141,7 @@ export const printerService = {
 
       return {
         id: String(i.id),
+        createdAt: i.created_at ?? null,
         date: dateStr,
         serviceCenter: inspectorInfo?.empresa_razon_social ?? null,
         centerRif: inspectorInfo?.empresa_rif ?? null,

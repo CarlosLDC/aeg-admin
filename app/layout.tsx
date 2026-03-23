@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import { User } from '@supabase/supabase-js';
 import { withTimeout } from '@/lib/timeout';
+import { SunIcon, MoonIcon } from '@/components/icons';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -86,13 +87,17 @@ export default function RootLayout({
         let distribuidoraId: number | null = null;
         if (data?.rol_usuario === 'tecnico' && data.id_empleado != null) {
           console.log('[DEBUG] Consultando vista_directorio_empleados para empleado_id:', data.id_empleado);
-          const { data: dirRow, error: dirErr } = await withTimeout(
+          const { data: dirRows, error: dirErr } = await withTimeout(
             supabase
               .from('vista_directorio_empleados')
               .select('empleado_id, distribuidora_id, sucursal_id, empleado_nombre')
               .eq('empleado_id', data.id_empleado)
-              .maybeSingle()
           );
+          const dirRow =
+            !dirErr && Array.isArray(dirRows)
+              ? dirRows.find((r: { distribuidora_id?: number | null }) => r.distribuidora_id != null) ??
+                dirRows[0]
+              : null;
           console.log('[DEBUG] Resultado dirRow:', JSON.stringify(dirRow), 'error:', dirErr);
           if (!dirErr && dirRow?.distribuidora_id != null) {
             distribuidoraId = Number(dirRow.distribuidora_id);
@@ -262,20 +267,4 @@ export default function RootLayout({
 }
 
 
-function SunIcon({ size }: { size: number }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2" /><path d="M12 20v2" /><path d="M4.93 4.93l1.41 1.41" /><path d="M17.66 17.66l1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="M4.93 19.07l1.41-1.41" /><path d="M17.66 6.34l1.41-1.41" />
-    </svg>
-  );
-}
-
-function MoonIcon({ size }: { size: number }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-    </svg>
-  );
-}
 

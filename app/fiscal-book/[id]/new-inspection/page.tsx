@@ -9,14 +9,8 @@ import { fetchDirectorioEmpleados, type DirectorioEmpleadoRow } from '@/lib/tecn
 import { useUserProfile } from '@/app/layout';
 import { canRegistrarServiciosEInspecciones } from '@/lib/roles';
 import { printerService } from '@/lib/printer-service';
-
-function ArrowLeft({ size, className }: { size: number; className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
-    </svg>
-  );
-}
+import { ArrowLeft } from '@/components/icons';
+import { SuccessModal } from '@/components/success-modal';
 
 export default function NewAnnualInspection({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -37,6 +31,9 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
   const [precintoViolentado, setPrecintoViolentado] = useState(false);
   const [fechaInspeccion, setFechaInspeccion] = useState('');
   const [inspectorInfo, setInspectorInfo] = useState<DirectorioEmpleadoRow | null>(null);
+
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successRecordId, setSuccessRecordId] = useState<string | null>(null);
 
   // Inspectores desde directorio de empleados (filtrado por rol en app si aplica)
   useEffect(() => {
@@ -104,7 +101,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
       const inspector = inspectorInfo || inspectoresData.find(t => t.empleado_id === numEmpleado);
       // const idCentroServicio = inspector?.centro_servicio_id; // Columna no existe en la tabla según el esquema proveído
 
-      const { error: insertError } = await withTimeout(
+      const { data: insertedRow, error: insertError } = await withTimeout(
         supabase
           .from('inspecciones_anuales')
           .insert([{
@@ -114,15 +111,17 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
             precinto_violentado: precintoViolentado,
             url_fotos: [],
             fecha: fechaInspeccion,
-          }]),
+          }])
+          .select('id')
+          .maybeSingle(),
         20000 // Higher timeout for inserts
       );
 
       if (insertError) throw insertError;
 
-      router.push(`/fiscal-book/${id}`);
-      router.refresh();
-      
+      const insId = insertedRow?.id as number | undefined;
+      setSuccessRecordId(insId != null ? String(insId) : null);
+      setSuccessOpen(true);
     } catch (err: any) {
       console.error('Error insertando inspección anual:', {
         message: err.message,
@@ -131,6 +130,7 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
         code: err.code
       });
       setError(err.message || 'Error al guardar la inspección anual.');
+    } finally {
       setLoading(false);
     }
   };
@@ -174,8 +174,31 @@ export default function NewAnnualInspection({ params }: { params: Promise<{ id: 
     );
   }
 
+  const goToLibroTrasExito = () => {
+    const rid = successRecordId;
+    setSuccessOpen(false);
+    setSuccessRecordId(null);
+    const q = rid
+      ? `?tab=inspection&registro=${encodeURIComponent(rid)}`
+      : '?tab=inspection';
+    router.push(`/fiscal-book/${id}${q}`);
+    router.refresh();
+  };
+
   return (
     <main className="container mx-auto px-4 py-12 max-w-3xl flex-1 flex flex-col">
+      <SuccessModal
+        open={successOpen}
+        title="Inspección registrada"
+        message="La inspección anual se guardó correctamente. Podrá verla en el libro fiscal en la pestaña Inspecciones."
+        primaryLabel="Ver en el libro"
+        onPrimary={goToLibroTrasExito}
+        secondaryLabel="Permanecer aquí"
+        onSecondary={() => {
+          setSuccessOpen(false);
+          setSuccessRecordId(null);
+        }}
+      />
       <div className="mb-8">
         <Link href={`/fiscal-book/${id}`} className="inline-flex items-center gap-2 text-muted hover:text-foreground transition-colors mb-4">
           <ArrowLeft size={18} />

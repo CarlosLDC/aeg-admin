@@ -1,70 +1,24 @@
 'use client';
 
-import { useState, use, useEffect, useRef } from 'react';
+import { useState, use, useEffect, useRef, useMemo, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useUserProfile } from '@/app/layout';
 import { canRegistrarServiciosEInspecciones } from '@/lib/roles';
-import { FiscalPrinter, TechnicalReview, AnnualInspection, Precinto } from '@/lib/mock-data';
+import { FiscalPrinter, TechnicalReview, AnnualInspection } from '@/lib/types';
 import { printerService } from '@/lib/printer-service';
+import { truncateVersion, getActiveSealSerial, formatRegistroCreado } from '@/lib/fiscal-helpers';
+import { ArrowLeft, ArrowRight, DownloadIcon, MenuIcon, XIcon, PlusIcon } from '@/components/icons';
+import { InfoPage } from '@/components/fiscal-book/info-page';
+import { SingleTechSheet } from '@/components/fiscal-book/tech-sheet';
+import { SingleInspectionSheet } from '@/components/fiscal-book/inspection-sheet';
+import { EmptyState } from '@/components/fiscal-book/empty-state';
 import Link from 'next/link';
 import jsPDF from 'jspdf';
 
-// Formatting Helper
-const formatTimestamp = (dateStr: string | null | undefined) => {
-    if (!dateStr) return null;
-    try {
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return dateStr;
-        const pad = (n: number) => String(n).padStart(2, '0');
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-    } catch {
-        return dateStr;
-    }
-};
-
-// Helper to chunk arrays
-function chunkArray<T>(array: T[], size: number): T[][] {
-    const chunked_arr = [];
-    for (let i = 0; i < array.length; i += size) {
-        chunked_arr.push(array.slice(i, i + size));
-    }
-    return chunked_arr;
-}
-
-const NoData = () => (
-    <span className="text-slate-400 dark:text-slate-600 text-sm italic font-medium normal-case">N/D</span>
-);
-
-const InfoIcon = ({ size = 16, className = "", title }: { size?: number, className?: string, title?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        {title && <title>{title}</title>}
-        <circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />
-    </svg>
-);
-
-const truncateVersion = (version: string | null | undefined) => {
-    if (!version) return null;
-    const parts = version.split('.');
-    if (parts.length > 1) {
-        return parts.slice(0, -1).join('.');
-    }
-    return version;
-};
-
-// Helper function to find the active seal
-const getActiveSealSerial = (printer: FiscalPrinter) => {
-    if (!printer.precintos || printer.precintos.length === 0) {
-        return null;
-    }
-    
-    const activeSeal = printer.precintos.find(precinto => 
-        precinto.id_impresora !== null && precinto.estatus === 'en_impresora'
-    );
-    
-    return activeSeal ? activeSeal.serial : null;
-};
-
-export default function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
+function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const searchParams = useSearchParams();
+    const router = useRouter();
     const { profile, loading: authLoading, tecnicoDistribuidoraId } = useUserProfile();
     const [printer, setPrinter] = useState<FiscalPrinter | undefined>(undefined);
     const [loading, setLoading] = useState(true);
@@ -72,6 +26,11 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
     // Core States
     const [viewMode, setViewMode] = useState<'info' | 'tech' | 'inspection'>('info');
     const [currentPage, setCurrentPage] = useState(0);
+
+    const [techFilterQuery, setTechFilterQuery] = useState('');
+    const [techFilterYear, setTechFilterYear] = useState<string>('all');
+    const [inspFilterQuery, setInspFilterQuery] = useState('');
+    const [inspFilterYear, setInspFilterYear] = useState<string>('all');
     const [isDownloading, setIsDownloading] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
@@ -90,11 +49,127 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
         };
         loadData();
     }, [id, authLoading, profile?.rol_usuario, tecnicoDistribuidoraId]);
+
+    const queryString = searchParams.toString();
+
+    /** Tras crear un servicio/inspección: ?tab=…&registro=id → abre esa página y limpia la URL. */
+    useEffect(() => {
+        if (!printer) return;
+        const tab = searchParams.get('tab');
+        const registro = searchParams.get('registro');
+        if (tab !== 'tech' && tab !== 'inspection') return;
+
+        setViewMode(tab);
+        const fullList =
+            tab === 'tech' ? printer.technicalReviews : printer.annualInspections;
+        let idx = 0;
+        if (registro) {
+            const i = fullList.findIndex((r) => r.id === registro);
+            if (i >= 0) idx = i;
+        }
+        setCurrentPage(idx);
+        setTechFilterQuery('');
+        setTechFilterYear('all');
+        setInspFilterQuery('');
+        setInspFilterYear('all');
+        router.replace(`/fiscal-book/${id}`, { scroll: false });
+    }, [printer, queryString, id, router]);
+
+    const techYearOptions = useMemo(() => {
+        if (!printer) return [] as string[];
+        const years = new Set<string>();
+        for (const r of printer.technicalReviews) {
+            const src = r.createdAt || r.date;
+            if (src && typeof src === 'string' && src.length >= 4) {
+                years.add(src.slice(0, 4));
+            }
+        }
+        return [...years].sort();
+    }, [printer]);
+
+    const inspYearOptions = useMemo(() => {
+        if (!printer) return [] as string[];
+        const years = new Set<string>();
+        for (const r of printer.annualInspections) {
+            const src = r.createdAt || r.date;
+            if (src && typeof src === 'string' && src.length >= 4) {
+                years.add(src.slice(0, 4));
+            }
+        }
+        return [...years].sort();
+    }, [printer]);
+
+    const filteredTechRecords = useMemo(() => {
+        if (!printer) return [];
+        let list = printer.technicalReviews;
+        if (techFilterYear !== 'all') {
+            list = list.filter((r) => {
+                const src = r.createdAt || r.date;
+                return src && String(src).startsWith(techFilterYear);
+            });
+        }
+        const q = techFilterQuery.trim().toLowerCase();
+        if (q) {
+            list = list.filter(
+                (r) =>
+                    (r.description || '').toLowerCase().includes(q) ||
+                    (r.technician || '').toLowerCase().includes(q) ||
+                    (r.serviceCenter || '').toLowerCase().includes(q) ||
+                    String(r.id).includes(q) ||
+                    (r.fechaSolicitud || '').toLowerCase().includes(q)
+            );
+        }
+        return list;
+    }, [printer, techFilterYear, techFilterQuery]);
+
+    const filteredInspectionRecords = useMemo(() => {
+        if (!printer) return [];
+        let list = printer.annualInspections;
+        if (inspFilterYear !== 'all') {
+            list = list.filter((r) => {
+                const src = r.createdAt || r.date;
+                return src && String(src).startsWith(inspFilterYear);
+            });
+        }
+        const q = inspFilterQuery.trim().toLowerCase();
+        if (q) {
+            list = list.filter(
+                (r) =>
+                    (r.observations || '').toLowerCase().includes(q) ||
+                    (r.inspector || '').toLowerCase().includes(q) ||
+                    (r.serviceCenter || '').toLowerCase().includes(q) ||
+                    String(r.id).includes(q) ||
+                    (r.date || '').toLowerCase().includes(q)
+            );
+        }
+        return list;
+    }, [printer, inspFilterYear, inspFilterQuery]);
     
     // Auto-scroll to top on page or tab change
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, [currentPage, viewMode]);
+
+    // Navegación: una entrada por “página” (lista filtrada). Debe declararse antes de cualquier return
+    // para no alterar el orden de Hooks entre “cargando” y “listo”.
+    const records =
+        viewMode === 'tech'
+            ? filteredTechRecords
+            : viewMode === 'inspection'
+              ? filteredInspectionRecords
+              : [];
+    const totalPages = viewMode === 'info' ? 1 : records.length;
+
+    useEffect(() => {
+        if (viewMode === 'info') return;
+        if (totalPages === 0) {
+            if (currentPage !== 0) setCurrentPage(0);
+            return;
+        }
+        if (currentPage > totalPages - 1) {
+            setCurrentPage(totalPages - 1);
+        }
+    }, [viewMode, totalPages, currentPage]);
 
     if (authLoading || loading) {
         return (
@@ -114,14 +189,14 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
         );
     }
 
-    // Mathematical Navigation logic for 1 Record per Page
-    const records = viewMode === 'tech'
-        ? printer.technicalReviews
-        : viewMode === 'inspection'
-            ? printer.annualInspections
-            : [];
-    const totalPages = viewMode === 'info' ? 1 : records.length;
-    const currentRecord = viewMode !== 'info' ? records[currentPage] : null;
+    const currentRecord =
+        viewMode !== 'info' && totalPages > 0 ? records[currentPage] ?? null : null;
+
+    const hasFullTech = printer.technicalReviews.length > 0;
+    const hasFullInsp = printer.annualInspections.length > 0;
+    const techFilteredEmpty = viewMode === 'tech' && hasFullTech && records.length === 0;
+    const inspFilteredEmpty =
+        viewMode === 'inspection' && hasFullInsp && records.length === 0;
 
     const handleNext = () => {
         if (currentPage < totalPages - 1) setCurrentPage(p => p + 1);
@@ -615,6 +690,89 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
         </div>
     );
 
+    const libroFiltrosInner =
+        viewMode === 'tech' || viewMode === 'inspection' ? (
+            <>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 shrink-0">
+                    Filtros
+                </span>
+                {viewMode === 'tech' ? (
+                    <>
+                        <input
+                            type="search"
+                            placeholder="Buscar (falla, técnico, centro, ID…)"
+                            value={techFilterQuery}
+                            onChange={(e) => {
+                                setTechFilterQuery(e.target.value);
+                                setCurrentPage(0);
+                            }}
+                            className="w-full md:flex-1 md:min-w-[160px] px-3 py-2 rounded-lg text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400"
+                        />
+                        <select
+                            value={techFilterYear}
+                            onChange={(e) => {
+                                setTechFilterYear(e.target.value);
+                                setCurrentPage(0);
+                            }}
+                            className="w-full md:w-auto md:min-w-[120px] px-3 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                        >
+                            <option value="all">Todos los años</option>
+                            {techYearOptions.map((y) => (
+                                <option key={y} value={y}>
+                                    {y}
+                                </option>
+                            ))}
+                        </select>
+                    </>
+                ) : (
+                    <>
+                        <input
+                            type="search"
+                            placeholder="Buscar (observaciones, inspector, centro…)"
+                            value={inspFilterQuery}
+                            onChange={(e) => {
+                                setInspFilterQuery(e.target.value);
+                                setCurrentPage(0);
+                            }}
+                            className="w-full md:flex-1 md:min-w-[160px] px-3 py-2 rounded-lg text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400"
+                        />
+                        <select
+                            value={inspFilterYear}
+                            onChange={(e) => {
+                                setInspFilterYear(e.target.value);
+                                setCurrentPage(0);
+                            }}
+                            className="w-full md:w-auto md:min-w-[120px] px-3 py-2 rounded-lg text-sm font-medium bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                        >
+                            <option value="all">Todos los años</option>
+                            {inspYearOptions.map((y) => (
+                                <option key={y} value={y}>
+                                    {y}
+                                </option>
+                            ))}
+                        </select>
+                    </>
+                )}
+                {(viewMode === 'tech'
+                    ? techFilterQuery || techFilterYear !== 'all'
+                    : inspFilterQuery || inspFilterYear !== 'all') ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setTechFilterQuery('');
+                            setTechFilterYear('all');
+                            setInspFilterQuery('');
+                            setInspFilterYear('all');
+                            setCurrentPage(0);
+                        }}
+                        className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline px-2 self-start md:self-auto"
+                    >
+                        Limpiar filtros
+                    </button>
+                ) : null}
+            </>
+        ) : null;
+
     return (
         <main className="container mx-auto px-2 pt-6 pb-12 md:pt-8 md:pb-16 flex flex-col items-center min-h-screen">
             <style jsx global>{`
@@ -705,13 +863,24 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
                     </div>
                 </div>
 
-                {/* Mobile Expanded Menu */}
+                {/* Móvil: pestañas, filtros y acciones dentro del menú hamburguesa */}
                 {isMobileMenuOpen && (
                     <div className="md:hidden flex flex-col gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 animate-in fade-in duration-200">
                         {tabsMenu}
+                        {libroFiltrosInner != null ? (
+                            <div className="flex flex-col gap-2 w-full rounded-xl bg-slate-50/80 dark:bg-slate-900/40 p-3 border border-slate-200/80 dark:border-slate-700/80">
+                                {libroFiltrosInner}
+                            </div>
+                        ) : null}
                         {actionMenu}
                     </div>
                 )}
+
+                {libroFiltrosInner != null ? (
+                    <div className="no-print hidden md:flex mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex-row flex-wrap gap-2 items-center">
+                        {libroFiltrosInner}
+                    </div>
+                ) : null}
             </div>
 
             {/* Formal Record Sheet */}
@@ -743,17 +912,67 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
 
                             {viewMode === 'tech' && (
                                 currentRecord ? (
-                                    <SingleTechSheet review={currentRecord as TechnicalReview} printer={printer} />
+                                    <>
+                                        <div className="no-print mb-6 flex flex-wrap items-center gap-2 text-[11px]">
+                                            <span className="inline-flex items-center rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-2.5 py-1 font-mono font-bold tabular-nums">
+                                                Pág. {String(currentPage + 1).padStart(2, '0')} /{' '}
+                                                {String(totalPages).padStart(2, '0')}
+                                            </span>
+                                            <span className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/80 px-2.5 py-1 font-mono text-slate-700 dark:text-slate-300">
+                                                Registro #{currentRecord.id}
+                                            </span>
+                                            {(currentRecord as TechnicalReview).createdAt ? (
+                                                <span className="inline-flex items-center rounded-md border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-emerald-900 dark:text-emerald-200 font-semibold">
+                                                    Creado:{' '}
+                                                    {formatRegistroCreado(
+                                                        (currentRecord as TechnicalReview).createdAt
+                                                    )}
+                                                </span>
+                                            ) : null}
+                                            {filteredTechRecords.length !== printer.technicalReviews.length ? (
+                                                <span className="text-slate-500 dark:text-slate-400 font-medium">
+                                                    (filtrado: {filteredTechRecords.length} de{' '}
+                                                    {printer.technicalReviews.length})
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        <SingleTechSheet review={currentRecord as TechnicalReview} printer={printer} />
+                                    </>
                                 ) : (
-                                    <EmptyState type="services" />
+                                    <EmptyState type="services" filtered={techFilteredEmpty} />
                                 )
                             )}
 
                             {viewMode === 'inspection' && (
                                 currentRecord ? (
-                                    <SingleInspectionSheet inspection={currentRecord as AnnualInspection} printer={printer} />
+                                    <>
+                                        <div className="no-print mb-6 flex flex-wrap items-center gap-2 text-[11px]">
+                                            <span className="inline-flex items-center rounded-md bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-2.5 py-1 font-mono font-bold tabular-nums">
+                                                Pág. {String(currentPage + 1).padStart(2, '0')} /{' '}
+                                                {String(totalPages).padStart(2, '0')}
+                                            </span>
+                                            <span className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/80 px-2.5 py-1 font-mono text-slate-700 dark:text-slate-300">
+                                                Registro #{currentRecord.id}
+                                            </span>
+                                            {(currentRecord as AnnualInspection).createdAt ? (
+                                                <span className="inline-flex items-center rounded-md border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-emerald-900 dark:text-emerald-200 font-semibold">
+                                                    Creado:{' '}
+                                                    {formatRegistroCreado(
+                                                        (currentRecord as AnnualInspection).createdAt
+                                                    )}
+                                                </span>
+                                            ) : null}
+                                            {filteredInspectionRecords.length !== printer.annualInspections.length ? (
+                                                <span className="text-slate-500 dark:text-slate-400 font-medium">
+                                                    (filtrado: {filteredInspectionRecords.length} de{' '}
+                                                    {printer.annualInspections.length})
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        <SingleInspectionSheet inspection={currentRecord as AnnualInspection} printer={printer} />
+                                    </>
                                 ) : (
-                                    <EmptyState type="inspections" />
+                                    <EmptyState type="inspections" filtered={inspFilteredEmpty} />
                                 )
                             )}
                         </div>
@@ -765,417 +984,18 @@ export default function FiscalBookDetail({ params }: { params: Promise<{ id: str
     );
 }
 
-function EmptyState({ type }: { type: 'services' | 'inspections' }) {
+export default function FiscalBookPage({ params }: { params: Promise<{ id: string }> }) {
     return (
-        <div className="flex flex-col items-center justify-center flex-1 py-20 text-center">
-            <div className="w-12 h-12 rounded-full border border-dashed border-slate-300 dark:border-slate-700 mb-4 flex items-center justify-center">
-                <span className="text-xl grayscale opacity-30">📋</span>
-            </div>
-            <h3 className="text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Libro sin registros</h3>
-            <p className="text-xs text-slate-300 dark:text-slate-600 mt-1">No se han encontrado {type === 'services' ? 'servicios' : 'inspecciones'}.</p>
-        </div>
+        <Suspense
+            fallback={
+                <main className="container mx-auto px-4 py-32 max-w-4xl text-center flex-1 flex flex-col justify-center">
+                    <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-muted font-medium">Cargando libro fiscal…</p>
+                </main>
+            }
+        >
+            <FiscalBookDetail params={params} />
+        </Suspense>
     );
 }
 
-function InfoPage({ printer }: { printer: FiscalPrinter }) {
-    return (
-        <div className="space-y-12">
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">1. DATOS DEL FABRICANTE</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Razón Social</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-lg">ALPHA ENGINEER GROUP, C.A.</p>
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">J504594369</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estado</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">MIRANDA</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">LOS TEQUES</p>
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Domicilio fiscal</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase">AVENIDA BICENTENARIO, REDOMA DEL TAMBOR, EDIFICIO VERACRUZ, PISO 1, LOCAL N° 3</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">TELÉFONO</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">584242913038</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">CORREO</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black tracking-tight">soportealphavzla@gmail.com</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. DATOS DEL ENAJENADOR</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    {printer.distribuidora?.sucursal ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="md:col-span-2">
-                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Razón Social</label>
-                                <p className="text-slate-900 dark:text-white font-black uppercase text-lg">{printer.distribuidora.sucursal.company?.razon_social || <NoData />}</p>
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF</label>
-                                <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.distribuidora.sucursal.company?.rif || <NoData />}</p>
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estado</label>
-                                <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.distribuidora.sucursal.estado || <NoData />}</p>
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
-                                <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.distribuidora.sucursal.ciudad || <NoData />}</p>
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Dirección</label>
-                                <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase">{printer.distribuidora.sucursal.direccion || <NoData />}</p>
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Teléfono</label>
-                                <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.distribuidora.sucursal.telefono || <NoData />}</p>
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Correo</label>
-                                <p className="font-mono text-slate-900 dark:text-white text-xs font-black tracking-tight">{printer.distribuidora.sucursal.correo || <NoData />}</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <p className="text-slate-400 dark:text-slate-600 text-sm italic">Sin enajenador registrado.</p>
-                    )}
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">3. DATOS DEL CONTRIBUYENTE/USUARIO</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Razón Social</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-lg">{printer.businessName || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.rif || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Tipo de Contribuyente</label>
-                            <p className="text-slate-900 dark:text-white font-black text-xs uppercase tracking-tight">{printer.taxpayerType ? printer.taxpayerType.toUpperCase() : <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Estado</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.sucursal?.estado || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Ciudad</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.sucursal?.ciudad || <NoData />}</p>
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Domicilio Fiscal</label>
-                            <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase">{printer.address || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Teléfono</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.sucursal?.telefono || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Correo</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black tracking-tight">{printer.sucursal?.correo || <NoData />}</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">4. DATOS DEL LUGAR DE INSTALACIÓN</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <p className="text-slate-400 dark:text-slate-600 text-sm italic">El lugar de instalación es el domicilio fiscal del contribuyente.</p>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">5. DATOS DE LA MÁQUINA FISCAL</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Número de Registro (serial)</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.serial_fiscal || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Tipo de Dispositivo Fiscal</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.tipo_dispositivo || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Marca</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.modelo?.marca || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Modelo</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.modelo?.codigo_modelo || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial del Precinto</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">
-                                {getActiveSealSerial(printer) || <NoData />}
-                            </p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Instalación</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">
-                                {(printer.fecha_instalacion || printer.created_at) ? new Date((printer.fecha_instalacion || printer.created_at) as string).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : <NoData />}
-                            </p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Versión del Firmware</label>
-                            <div className="inline-flex items-center gap-1.5 group relative cursor-help">
-                                <p className="font-mono text-slate-900 dark:text-white font-black text-sm m-0">
-                                    {truncateVersion(printer.version_firmware) || <NoData />}
-                                </p>
-                                {printer.version_firmware && (
-                                    <>
-                                        <InfoIcon 
-                                            size={14} 
-                                            className="text-slate-400 dark:text-slate-500 hover:text-blue-500 transition-colors flex-shrink-0 relative -top-[1px]" 
-                                        />
-                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap z-50 pointer-events-none shadow-xl border border-slate-200 dark:border-slate-700 translate-y-1 group-hover:translate-y-0">
-                                            Versión completa: <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{printer.version_firmware}</span>
-                                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white dark:border-t-slate-800" />
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">6. DATOS DEL SOFTWARE</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Nombre</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.software?.nombre || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Versión</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{printer.software?.version || <NoData />}</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
-    );
-}
-
-function SingleTechSheet({ review, printer }: { review: TechnicalReview, printer: FiscalPrinter }) {
-    return (
-        <div className="space-y-12">
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">1. DATOS DEL SERVICIO</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Centro de Servicio Técnico Autorizado</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{review.serviceCenter || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF Centro de Servicio</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.centerRif || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Solicitud</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.fechaSolicitud || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Inicio</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.date || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Fin</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.date || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Primera Reporte Z</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.zReportStart || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha y Hora de Primer Reporte Z</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{formatTimestamp(review.zReportTimestampStart) || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Último Reporte Z</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.zReportEnd || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha y Hora de Último Reporte Z</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{formatTimestamp(review.zReportTimestampEnd) || <NoData />}</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. GESTIÓN DE PRECINTOS</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial del Precinto Actual</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.currentSealSerial || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">¿Precinto Violentado?</label>
-                            <p className={`font-black text-xs uppercase tracking-tight ${review.sealBroken ? 'text-red-500' : 'text-emerald-500'}`}>{review.sealBroken ? 'SÍ' : 'NO'}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">¿Se Cambió el Precinto?</label>
-                            <p className={`font-black text-xs uppercase tracking-tight ${review.sealReplaced ? 'text-blue-500' : 'text-slate-400'}`}>{review.sealReplaced ? 'SÍ' : 'NO'}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Serial del Nuevo Precinto</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{review.newSealSerial || <NoData />}</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">3. DETALLES DE LA INTERVENCIÓN</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div>
-                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Falla Reportada y Acción Realizada</label>
-                        <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
-                            {review.description || <NoData />}
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">4. CIERRE Y RESPONSABILIDADES</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Técnico Autorizado</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{review.technician || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Persona que Recibe</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{printer.businessName || <NoData />}</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </div>
-    );
-}
-
-function SingleInspectionSheet({ inspection, printer }: { inspection: AnnualInspection, printer: FiscalPrinter }) {
-    return (
-        <div className="space-y-12">
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">1. DATOS DEL CENTRO Y TÉCNICO</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Centro de Servicio Técnico</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{inspection.serviceCenter || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">RIF Centro de Servicio</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{inspection.centerRif || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Fecha de Inspección</label>
-                            <p className="font-mono text-slate-900 dark:text-white text-xs font-black uppercase tracking-tight">{inspection.date || <NoData />}</p>
-                        </div>
-                        <div>
-                            <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Inspector Actuante</label>
-                            <p className="text-slate-900 dark:text-white font-black uppercase text-xs tracking-tight">{inspection.inspector || <NoData />}</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section>
-                <h2 className="text-[11px] uppercase tracking-widest font-black text-slate-900 dark:text-white mb-6 pb-2 border-b border-slate-100 dark:border-slate-900">2. DETALLES DE LA INSPECCIÓN</h2>
-                <div className="bg-slate-50 dark:bg-slate-900/50 p-6 border border-slate-100 dark:border-slate-900 transition-colors">
-                    <div>
-                        <label className="text-[9px] font-bold uppercase tracking-tighter text-slate-400 dark:text-slate-500 block mb-1">Observaciones y Hallazgos</label>
-                        <p className="text-slate-700 dark:text-slate-300 font-medium text-sm leading-relaxed uppercase bg-white/50 dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 whitespace-pre-wrap">
-                            {inspection.observations || <NoData />}
-                        </p>
-                    </div>
-                </div>
-            </section>
-        </div>
-    );
-}
-
-// SimplifiedRecord component and its usage are removed as html2canvas is no longer used.
-
-function DownloadIcon({ size, className }: { size: number; className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" />
-        </svg>
-    );
-}
-
-function ArrowLeft({ size, className }: { size: number; className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
-        </svg>
-    );
-}
-
-function ArrowRight({ size, className }: { size: number; className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="M5 12h14" /><path d="m12 5 7 7-7 7" />
-        </svg>
-    );
-}
-
-function PrinterIcon({ size, className }: { size: number; className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5" /><rect x="6" y="14" width="12" height="8" rx="2" />
-        </svg>
-    );
-}
-
-function MenuIcon({ size, className }: { size: number; className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/>
-        </svg>
-    );
-}
-
-function XIcon({ size, className }: { size: number; className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-        </svg>
-    );
-}
-
-function PlusIcon({ size, className }: { size: number; className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-        </svg>
-    );
-}

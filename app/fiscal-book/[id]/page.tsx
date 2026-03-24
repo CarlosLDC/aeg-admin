@@ -913,7 +913,7 @@ function FiscalBookDetail({ params }: { params: Promise<{ id: string }> }) {
                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-900 dark:border-slate-100 pb-6 mb-10 gap-4 sm:gap-0">
                             <div>
                                 <h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">
-                                    Libro de Control y Reparación
+                                    Libro Virtual de Control, Reparación y Mantenimiento
                                 </h1>
                                 <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold tracking-[0.2em] uppercase mt-1">
                                     Máquina Fiscal - Providencia SENIAT 0141
